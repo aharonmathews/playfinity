@@ -4,11 +4,15 @@
 
 :root {
   color-scheme: light dark;
+  --color-bg: #ffffff;
+  --color-text: #000000;
 }
 
 html, body, #root {
-  height: 100%;
+  height: 50%;
+
 }
+
 
 
 
