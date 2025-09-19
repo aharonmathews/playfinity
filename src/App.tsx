@@ -5,6 +5,7 @@ import { Dashboard } from './components/Dashboard'
 import { DrawingCanvas } from './components/DrawingCanvas'
 import { SpellingGame } from './components/games/SpellingGame'
 import { DrawingGame } from './components/games/DrawingGame'
+import { ImageGalleryGame } from './components/games/ImageGalleryGame'
 
 type Topic = {
   id: string
@@ -123,7 +124,7 @@ function HomePage() {
 function GamePage() {
   const { topicId } = useParams<{ topicId: string }>()
   const navigate = useNavigate()
-  const [gamePhase, setGamePhase] = useState<'spelling' | 'drawing' | 'completed'>('spelling')
+  const [gamePhase, setGamePhase] = useState<'spelling' | 'drawing' | 'gallery' | 'completed'>('spelling')
   
   const topics: Topic[] = useMemo(
     () => [
@@ -159,6 +160,10 @@ function GamePage() {
   }
 
   const handleDrawingComplete = () => {
+    setGamePhase('gallery')
+  }
+
+  const handleGalleryComplete = () => {
     setGamePhase('completed')
   }
 
@@ -184,19 +189,21 @@ function GamePage() {
                 {currentTopic.title} - {
                   gamePhase === 'spelling' ? 'Spelling Game' :
                   gamePhase === 'drawing' ? 'Drawing Game' :
+                  gamePhase === 'gallery' ? 'Image Gallery' :
                   'All Games Completed!'
                 }
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {gamePhase === 'spelling' && 'Practice spelling with mirror characters'}
                 {gamePhase === 'drawing' && 'Draw each character to practice writing'}
-                {gamePhase === 'completed' && 'Congratulations! You completed both games!'}
+                {gamePhase === 'gallery' && 'Explore images related to the topic'}
+                {gamePhase === 'completed' && 'Congratulations! You completed all games!'}
               </p>
             </div>
           </div>
 
           {/* Progress indicator */}
-          <div className="flex items-center justify-center space-x-4">
+          <div className="flex items-center justify-center space-x-2">
             <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
               gamePhase === 'spelling' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300' :
               'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
@@ -204,19 +211,31 @@ function GamePage() {
               <div className={`w-2 h-2 rounded-full ${
                 gamePhase === 'spelling' ? 'bg-indigo-600' : 'bg-green-600'
               }`}></div>
-              <span className="text-sm font-medium">Spelling Game</span>
+              <span className="text-sm font-medium">Spelling</span>
             </div>
             <div className="text-gray-400">→</div>
             <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
               gamePhase === 'drawing' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' :
-              gamePhase === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
+              gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
               'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
             }`}>
               <div className={`w-2 h-2 rounded-full ${
                 gamePhase === 'drawing' ? 'bg-emerald-600' :
+                gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-600' : 'bg-gray-400'
+              }`}></div>
+              <span className="text-sm font-medium">Drawing</span>
+            </div>
+            <div className="text-gray-400">→</div>
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
+              gamePhase === 'gallery' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300' :
+              gamePhase === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
+              'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                gamePhase === 'gallery' ? 'bg-purple-600' :
                 gamePhase === 'completed' ? 'bg-green-600' : 'bg-gray-400'
               }`}></div>
-              <span className="text-sm font-medium">Drawing Game</span>
+              <span className="text-sm font-medium">Gallery</span>
             </div>
           </div>
 
@@ -227,6 +246,9 @@ function GamePage() {
             {gamePhase === 'drawing' && (
               <DrawingGame topic={currentTopic.title} onGameComplete={handleDrawingComplete} />
             )}
+            {gamePhase === 'gallery' && (
+              <ImageGalleryGame topic={currentTopic.title} onGameComplete={handleGalleryComplete} />
+            )}
             {gamePhase === 'completed' && (
               <div className="text-center py-8">
                 <div className="text-6xl mb-4">🎉</div>
@@ -234,7 +256,7 @@ function GamePage() {
                   Congratulations!
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  You have successfully completed both the Spelling Game and Drawing Game for {currentTopic.title}!
+                  You have successfully completed all three games for {currentTopic.title}!
                 </p>
                 <button
                   onClick={() => navigate('/')}
