@@ -1,0 +1,7 @@
+
+# Ignore common files and directories
+node_modules
+.DS_Store
+.env
+dist
+coverage  
