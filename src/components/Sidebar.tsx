@@ -17,11 +17,11 @@ export function Sidebar({ topics, onTopicClick }: SidebarProps) {
           <li key={t.id}>
             <button
               type="button"
-              title={t.title}
               onClick={() => onTopicClick?.(t)}
-              className="w-full text-left truncate text-sm px-2 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-900"
+              className="w-full text-left px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
             >
-              {t.title}
+              <div className="font-medium">{t.title}</div>
+              <div className="text-xs opacity-90">Start Learning</div>
             </button>
           </li>
         ))}
