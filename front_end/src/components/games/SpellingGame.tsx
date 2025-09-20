@@ -93,9 +93,9 @@ export function SpellingGame({ topic, onGameComplete }: Props) {
 
   const navigateHome = () => window.location.href = '/';
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-  <div className="text-sm text-gray-500">Character {index + 1} of {word.length}</div>
+    <div className="flex flex-col items-center justify-center min-h-[70vh] relative">
+      <div className="flex items-center justify-center gap-10 mb-2">
+        <div className="text-sm text-gray-500">Character {index + 1} of {word.length}</div>
         <div className="text-sm font-medium">Score: {score}</div>
       </div>
 
@@ -115,8 +115,8 @@ export function SpellingGame({ topic, onGameComplete }: Props) {
         </div>
       )}
 
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div className="fixed bottom-6 right-6 z-50">
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 justify-center mt-4">
+      <div className="absolute top-6 right-6 z-50">
         <button onClick={navigateHome} className="rounded bg-indigo-600 text-white px-4 py-2 shadow-lg hover:bg-indigo-700">Home</button>
       </div>
         {options.map((opt, idx) => (
@@ -124,7 +124,7 @@ export function SpellingGame({ topic, onGameComplete }: Props) {
             key={idx}
             type="button"
             onClick={() => handlePick(opt)}
-            className={`rounded-lg border px-3 py-4 text-xl font-semibold hover:bg-gray-50 transition-colors ${
+            className={`rounded-lg border px-6 py-6 text-2xl font-semibold hover:bg-gray-50 transition-colors ${
               feedback === 'correct' && opt === currentChar
                 ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                 : 'border-gray-200'

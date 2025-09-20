@@ -6,6 +6,7 @@ import { DrawingCanvas } from './components/DrawingCanvas'
 import { SpellingGame } from './components/games/SpellingGame'
 import { DrawingGame } from './components/games/DrawingGame'
 import { ImageGalleryGame } from './components/games/ImageGalleryGame'
+import { GeneralKnowledgeGame } from './components/games/GeneralKnowledgeGame'
 import confetti from "canvas-confetti";
 
 const applauseSound = new Audio("https://www.soundjay.com/human/applause-8.mp3");
@@ -178,7 +179,7 @@ function HomePage() {
 function GamePage() {
   const { topicId } = useParams<{ topicId: string }>()
   const navigate = useNavigate()
-  const [gamePhase, setGamePhase] = useState<'spelling' | 'drawing' | 'matching' | 'gallery' | 'completed'>('spelling')
+  const [gamePhase, setGamePhase] = useState<'spelling' | 'drawing' | 'matching' | 'gallery' | 'gk' | 'completed'>('spelling')
 
   const currentTopic = topics.find(topic => topic.id === topicId)
   const awardPoints = (points: number) => { userScore += points; };
@@ -203,7 +204,8 @@ function GamePage() {
   const handleSpellingComplete = () => { awardPoints(10); setGamePhase('drawing') }
   const handleDrawingComplete  = () => { awardPoints(15); setGamePhase('matching') }
   const handleMatchingComplete = () => { awardPoints(20); setGamePhase('gallery') }
-  const handleGalleryComplete  = () => { awardPoints(5);  setGamePhase('completed') }
+  const handleGalleryComplete  = () => { awardPoints(5);  setGamePhase('gk') }
+  const handleGKComplete = () => { setGamePhase('completed') }
 
   return (
   <div className="min-h-full bg-[#f8fafc] text-gray-900">
@@ -250,6 +252,9 @@ function GamePage() {
             {gamePhase === 'gallery' && (
               <ImageGalleryGame topic={currentTopic.title} onGameComplete={handleGalleryComplete} />
             )}
+            {gamePhase === 'gk' && (
+              <GeneralKnowledgeGame topic={currentTopic.title} onGameComplete={handleGKComplete} />
+            )}
             {gamePhase === 'completed' && (
               <div className="text-center py-8">
                 <div className="text-6xl mb-4">🎉</div>
@@ -274,7 +279,7 @@ function GamePage() {
   )
 }
 
-function SingleGamePage({ gameType }: { gameType: 'spelling' | 'drawing' | 'gallery' }) {
+function SingleGamePage({ gameType }: { gameType: 'spelling' | 'drawing' | 'gallery' | 'gk' }) {
   const { topicId } = useParams<{ topicId: string }>()
   const navigate = useNavigate()
   const currentTopic = topics.find(topic => topic.id === topicId)
@@ -293,7 +298,7 @@ function SingleGamePage({ gameType }: { gameType: 'spelling' | 'drawing' | 'gall
     )
   }
   const handleComplete = () => setCompleted(true)
-  const goToGame = (type: 'spelling' | 'drawing' | 'gallery') => {
+  const goToGame = (type: 'spelling' | 'drawing' | 'gallery' | 'gk') => {
     setCompleted(false)
     navigate(`/game/${topicId}/${type}`)
   }
@@ -302,14 +307,14 @@ function SingleGamePage({ gameType }: { gameType: 'spelling' | 'drawing' | 'gall
       <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9] text-gray-900">
         <div className="text-center">
           <div className="text-6xl mb-4">🎉</div>
-          <h2 className="text-2xl font-bold mb-2 text-gray-900">{gameType.charAt(0).toUpperCase() + gameType.slice(1)} Game Completed!</h2>
-          <p className="text-gray-500 mb-6">You have completed the {gameType} game for {currentTopic.title}.</p>
+          <h2 className="text-2xl font-bold mb-2 text-gray-900">{gameType === 'gk' ? 'General Knowledge' : gameType.charAt(0).toUpperCase() + gameType.slice(1)} Game Completed!</h2>
+          <p className="text-gray-500 mb-6">You have completed the {gameType === 'gk' ? 'General Knowledge' : gameType} game for {currentTopic.title}.</p>
           <div className="flex justify-center gap-4">
             {gameType !== 'spelling' && (
               <button onClick={() => goToGame('spelling')} className="rounded bg-indigo-600 text-white px-4 py-2">Previous Game</button>
             )}
-            {gameType !== 'gallery' && (
-              <button onClick={() => goToGame(gameType === 'spelling' ? 'drawing' : 'gallery')} className="rounded bg-indigo-600 text-white px-4 py-2">Next Game</button>
+            {gameType !== 'gk' && (
+              <button onClick={() => goToGame(gameType === 'spelling' ? 'drawing' : gameType === 'drawing' ? 'gallery' : 'gk')} className="rounded bg-indigo-600 text-white px-4 py-2">Next Game</button>
             )}
             <button onClick={() => navigate('/')} className="rounded bg-gray-200 text-gray-900 px-4 py-2">Home</button>
           </div>
@@ -329,6 +334,9 @@ function SingleGamePage({ gameType }: { gameType: 'spelling' | 'drawing' | 'gall
         {gameType === 'gallery' && (
           <ImageGalleryGame topic={currentTopic.title} onGameComplete={handleComplete} />
         )}
+        {gameType === 'gk' && (
+          <GeneralKnowledgeGame topic={currentTopic.title} onGameComplete={handleComplete} />
+        )}
       </div>
     </div>
   )
@@ -343,6 +351,7 @@ export function App() {
         <Route path="/game/:topicId/spelling" element={<SingleGamePage gameType="spelling" />} />
         <Route path="/game/:topicId/drawing" element={<SingleGamePage gameType="drawing" />} />
         <Route path="/game/:topicId/gallery" element={<SingleGamePage gameType="gallery" />} />
+        <Route path="/game/:topicId/gk" element={<SingleGamePage gameType="gk" />} />
       </Routes>
     </Router>
   )

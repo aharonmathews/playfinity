@@ -13,6 +13,7 @@ export function Sidebar({ topics, onTopicClick }: SidebarProps) {
     { type: 'spelling', label: 'Spelling' },
     { type: 'drawing', label: 'Drawing' },
     { type: 'gallery', label: 'Gallery' },
+    { type: 'gk', label: 'GK Quiz' },
   ]
   return (
     <div className="h-full p-4">
@@ -22,11 +23,12 @@ export function Sidebar({ topics, onTopicClick }: SidebarProps) {
           <li key={t.id}>
             <div className="mb-1 font-medium text-indigo-700 dark:text-indigo-300">{t.title}</div>
             <div className="flex flex-wrap gap-2">
-              {gameLinks.map((g) => (
+              {gameLinks.map((g, idx) => (
                 <a
                   key={g.type}
                   href={`/game/${t.id}/${g.type}`}
-                  className="px-3 py-1 rounded bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
+                  className={`px-3 py-1 rounded text-white text-xs font-semibold transition-colors ${g.type === 'gk' ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                  style={{textDecoration: 'none'}}
                 >
                   {g.label}
                 </a>
