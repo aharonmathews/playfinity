@@ -9,9 +9,11 @@ type DashboardProps = {
   coveredCount: number
   runningCount: number
   progressPercent: number
+  score: number // ADDED: Score prop
 }
 
-export function Dashboard({ user, coveredCount, runningCount, progressPercent }: DashboardProps) {
+// MODIFIED: Destructure the new 'score' prop
+export function Dashboard({ user, coveredCount, runningCount, progressPercent, score }: DashboardProps) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
@@ -22,7 +24,8 @@ export function Dashboard({ user, coveredCount, runningCount, progressPercent }:
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Topics Selected" value={coveredCount} color="indigo" />
+        {/* ADDED: StatCard for the user's score */}
+        <StatCard label="Your Score" value={score} color="rose" />
         <StatCard label="Topics Running" value={runningCount} color="emerald" />
         <StatCard label="Remaining" value={Math.max(coveredCount - Math.max(0, coveredCount - runningCount), 0)} color="amber" />
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
@@ -37,11 +40,14 @@ export function Dashboard({ user, coveredCount, runningCount, progressPercent }:
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: 'indigo' | 'emerald' | 'amber' }) {
+// MODIFIED: Add 'rose' color option for the new score card
+function StatCard({ label, value, color }: { label: string; value: number; color: 'indigo' | 'emerald' | 'amber' | 'rose' }) {
   const colorMap = {
     indigo: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
     emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
     amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+    // ADDED: Rose color style
+    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
   } as const
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
@@ -50,5 +56,3 @@ function StatCard({ label, value, color }: { label: string; value: number; color
     </div>
   )
 }
-
-
