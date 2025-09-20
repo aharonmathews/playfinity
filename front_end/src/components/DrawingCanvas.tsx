@@ -31,6 +31,7 @@ export function DrawingCanvas() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [color, setColor] = useState('#ef4444')
   const [brush, setBrush] = useState(5)
+  const [isEraser, setIsEraser] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
 
@@ -91,9 +92,10 @@ export function DrawingCanvas() {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     ctx.lineTo(x, y)
-    ctx.strokeStyle = color
+    ctx.strokeStyle = isEraser ? '#ffffff' : color
     ctx.lineWidth = brush
     ctx.lineCap = 'round'
+    ctx.globalCompositeOperation = isEraser ? 'source-over' : 'source-over'
     ctx.stroke()
   }
 
@@ -149,14 +151,21 @@ export function DrawingCanvas() {
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <label className="text-sm">Color
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="ml-2 align-middle" />
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="ml-2 align-middle" disabled={isEraser} />
         </label>
         <label className="text-sm">Brush
           <input type="range" min={1} max={24} value={brush} onChange={(e) => setBrush(Number(e.target.value))} className="ml-2 align-middle" />
           <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{brush}px</span>
         </label>
+        <button
+          type="button"
+          onClick={() => setIsEraser(e => !e)}
+          className={`rounded border px-3 py-1 text-sm ${isEraser ? 'bg-yellow-200' : ''} hover:bg-gray-50 dark:hover:bg-gray-900`}
+        >
+          {isEraser ? 'Eraser (On)' : 'Eraser'}
+        </button>
         <button type="button" onClick={clearCanvas} className="ml-auto rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900">Clear</button>
-         <button
+        <button
           type="button"
           onClick={handleSubmit}
           disabled={loading}
@@ -169,6 +178,7 @@ export function DrawingCanvas() {
         <canvas
           ref={canvasRef}
           className="h-full w-full rounded-md bg-white touch-none"
+          style={isEraser ? { cursor: `url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'${brush * 2}\' height=\'${brush * 2}\'><circle cx=\'${brush}\' cy=\'${brush}\' r=\'${brush}\' fill=\'white\' stroke=\'gray\' stroke-width=\'2\'/></svg>') ${brush} ${brush}, pointer` } : { cursor: 'crosshair' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
