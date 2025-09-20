@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './components/Dashboard'
@@ -45,6 +45,55 @@ const topics: Topic[] = [
 let userScore = 0;
 
 function HomePage() {
+  const bubbleContainerRef = useRef<HTMLDivElement>(null);
+  // Bubble state
+  const [bubbles, setBubbles] = useState<Array<{id:number,x:number,y:number,color:string,size:number}>>([]);
+  // Bubble id counter
+  const bubbleId = useRef(0);
+
+  // Generate a random color for curiosity
+  function randomColor() {
+    const colors = ["#FFD700", "#FF6347", "#00FFFF", "#FF69B4", "#8B5CF6", "#22D3EE", "#F59E42", "#34D399"];
+    return colors[Math.floor(Math.random()*colors.length)];
+  }
+
+  // Sensory pop sound for bubbles
+  const bubblePopSound = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    bubblePopSound.current = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b6c7b7c.mp3");
+    bubblePopSound.current.volume = 0.3;
+  }, []);
+
+  // Generate a bubble at click position
+  function handleBgClick(e: React.MouseEvent<HTMLDivElement>) {
+    // Only create bubble if clicked on blank space (not a child element)
+    if (e.target !== bubbleContainerRef.current) return;
+    const rect = bubbleContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setBubbles(bubs => [
+      ...bubs,
+      {
+        id: bubbleId.current++,
+        x,
+        y,
+        color: randomColor(),
+        size: 40 + Math.random()*60
+      }
+    ]);
+    // Play pop sound for sensory feedback
+    bubblePopSound.current?.play().catch(() => {});
+  }
+
+  // Remove bubbles after animation
+  useEffect(() => {
+    if (!bubbles.length) return;
+    const timeout = setTimeout(() => {
+      setBubbles(bubs => bubs.slice(1));
+    }, 1200);
+    return () => clearTimeout(timeout);
+  }, [bubbles]);
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>(['t1'])
   const [runningTopicIds, setRunningTopicIds] = useState<string[]>(['t1'])
   const [user] = useState<UserProfile>({ name: 'Alex Johnson', age: 14, disability: 'Dyslexia' })
@@ -68,8 +117,35 @@ function HomePage() {
   }
 
   return (
-    <div className="min-h-full">
-      <header className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-950/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:dark:bg-gray-950/60">
+    <div
+      className="min-h-full bg-gradient-to-br from-blue-50 via-emerald-50 to-pink-100 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-800 relative overflow-hidden"
+      ref={bubbleContainerRef}
+      onClick={handleBgClick}
+      style={{minHeight:'100vh',width:'100vw'}}
+    >
+      {/* Render bubbles */}
+      {bubbles.map(bub => (
+        <span
+          key={bub.id}
+          style={{
+            position:'absolute',
+            left:bub.x-bub.size/2,
+            top:bub.y-bub.size/2,
+            width:bub.size,
+            height:bub.size,
+            background:bub.color,
+            borderRadius:'50%',
+            boxShadow:'0 0 24px 4px '+bub.color,
+            opacity:0.7,
+            pointerEvents:'none',
+            transition:'transform 1.2s cubic-bezier(.17,.67,.83,.67), opacity 1.2s',
+            transform:'scale(1.2)',
+            zIndex:10
+          }}
+          className="bubble curiosity-bubble"
+        />
+      ))}
+  <header className="sticky top-0 z-20 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-950/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:dark:bg-gray-950/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center">
           <div className="font-semibold">UST Learning</div>
         </div>
