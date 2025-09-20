@@ -31,7 +31,8 @@ export function DrawingCanvas() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [color, setColor] = useState('#ef4444')
   const [brush, setBrush] = useState(5)
-  const [saveMsg, setSaveMsg] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
 
   function fillWhiteBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
     ctx.save()
@@ -116,28 +117,39 @@ export function DrawingCanvas() {
     ctx.scale(dpr, dpr)
     fillWhiteBackground(ctx, rect.width, rect.height)
   }
-
-  async function saveImage() {
+    async function handleSubmit() {
     const canvas = canvasRef.current
     if (!canvas) return
-    const imageData = canvas.toDataURL('image/png')
-    try {
-      const response = await fetch('http://127.0.0.1:8000/upload/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData })
-      })
-      if (response.ok) {
-        setSaveMsg('Image saved to backend!')
-      } else {
-        setSaveMsg('Failed to save image to backend.')
-      }
-    } catch (err) {
-      setSaveMsg('Error while saving image.')
-    }
-    setTimeout(() => setSaveMsg(null), 2000)
-  }
 
+    setLoading(true)
+    setResult(null)
+
+    // Convert canvas to Blob (better than base64 for API calls)
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const formData = new FormData()
+        formData.append('file', blob, 'drawing.png')
+
+        const res = await fetch('http://localhost:8000/predict', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const data = await res.json()
+        setResult(JSON.stringify(data))
+      } catch (err) {
+        console.error('Error submitting image:', err)
+        setResult('Error submitting image')
+      } finally {
+        setLoading(false)
+      }
+    }, 'image/png')
+  }
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
       <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -148,9 +160,15 @@ export function DrawingCanvas() {
           <input type="range" min={1} max={24} value={brush} onChange={(e) => setBrush(Number(e.target.value))} className="ml-2 align-middle" />
           <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{brush}px</span>
         </label>
-  <button type="button" onClick={clearCanvas} className="ml-auto rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900">Clear</button>
-  <button type="button" onClick={uploadDrawing} className="rounded border px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 ml-2">Save Drawing</button>
-  <button type="button" onClick={uploadDrawing} className="rounded border px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 ml-2">Save Image</button>
+        <button type="button" onClick={clearCanvas} className="ml-auto rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900">Clear</button>
+         <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50"
+        >
+          {loading ? 'Submitting...' : 'Submit'}
+        </button>
       </div>
       {saveMsg && <div className="mb-2 text-green-700 dark:text-green-400 text-sm text-center">{saveMsg}</div>}
       <div className="h-[60vh] sm:h-[70vh]">
@@ -165,6 +183,11 @@ export function DrawingCanvas() {
           onPointerCancel={handlePointerUp}
         />
       </div>
+       {result && (
+        <div className="mt-3 p-2 text-sm rounded bg-gray-100 dark:bg-gray-900">
+          Prediction: {result}
+        </div>
+      )}
     </div>
   )
 }
