@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './components/Dashboard'
@@ -6,6 +6,21 @@ import { DrawingCanvas } from './components/DrawingCanvas'
 import { SpellingGame } from './components/games/SpellingGame'
 import { DrawingGame } from './components/games/DrawingGame'
 import { ImageGalleryGame } from './components/games/ImageGalleryGame'
+import confetti from "canvas-confetti";
+
+const applauseSound = new Audio("https://www.soundjay.com/human/applause-8.mp3");
+applauseSound.volume = 0.7;
+applauseSound.load();
+
+const celebrate = () => {
+  confetti({
+    particleCount: 80,
+    spread: 70,
+    origin: { y: 0.6 },
+    colors: ["#FFD700", "#FF6347", "#00FFFF", "#FF69B4"]
+  });
+  applauseSound.play().catch(() => {});
+};
 
 type Topic = {
   id: string
@@ -18,21 +33,23 @@ type UserProfile = {
   disability: string
 }
 
-function HomePage() {
-  const topics: Topic[] = useMemo(
-    () => [
-      { id: 't1', title: 'Mathematics' },
-      { id: 't2', title: 'Science' },
-      { id: 't3', title: 'History' },
-      { id: 't4', title: 'Geography' },
-      { id: 't5', title: 'Arts' },
-    ],
-    [],
-  )
+const topics: Topic[] = [
+  { id: 't1', title: 'Mathematics' },
+  { id: 't2', title: 'Science' },
+  { id: 't3', title: 'History' },
+  { id: 't4', title: 'Geography' },
+  { id: 't5', title: 'Arts' },
+]
 
+// ADDED: A global state for user score
+let userScore = 0;
+
+function HomePage() {
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>(['t1'])
   const [runningTopicIds, setRunningTopicIds] = useState<string[]>(['t1'])
   const [user] = useState<UserProfile>({ name: 'Alex Johnson', age: 14, disability: 'Dyslexia' })
+  // ADDED: State to manage and display the score on the dashboard
+  const [score, setScore] = useState(userScore)
   const [showCanvas, setShowCanvas] = useState(false)
   const navigate = useNavigate()
 
@@ -40,22 +57,15 @@ function HomePage() {
   const runningCount = runningTopicIds.length
   const progressPercent = coveredCount === 0 ? 0 : Math.round((coveredCount - runningCount) / coveredCount * 100)
 
-  function toggleTopicSelection(topicId: string) {
-    setSelectedTopicIds((prev) =>
-      prev.includes(topicId) ? prev.filter((id) => id !== topicId) : [...prev, topicId],
-    )
-  }
-
-  function toggleTopicRunning(topicId: string) {
-    setRunningTopicIds((prev) =>
-      prev.includes(topicId) ? prev.filter((id) => id !== topicId) : [...prev, topicId],
-    )
+  // ADDED: A function to award points, which will be passed to the GamePage
+  function awardPoints(points: number) {
+    userScore += points;
+    setScore(userScore);
   }
 
   function navigateToGame(topic: Topic) {
     navigate(`/game/${topic.id}`)
   }
-
 
   return (
     <div className="min-h-full">
@@ -80,9 +90,10 @@ function HomePage() {
               coveredCount={coveredCount}
               runningCount={runningCount}
               progressPercent={progressPercent}
+              // ADDED: Pass score to Dashboard
+              score={score}
             />
             
-            {/* Canvas section positioned just below dashboard */}
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4 bg-white dark:bg-gray-950 space-y-3">
               {!showCanvas ? (
                 <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -124,20 +135,15 @@ function HomePage() {
 function GamePage() {
   const { topicId } = useParams<{ topicId: string }>()
   const navigate = useNavigate()
-  const [gamePhase, setGamePhase] = useState<'spelling' | 'drawing' | 'gallery' | 'completed'>('spelling')
+  // MODIFIED: Added 'matching' to the game phase
+  const [gamePhase, setGamePhase] = useState<'spelling' | 'drawing' | 'matching' | 'gallery' | 'completed'>('spelling')
   
-  const topics: Topic[] = useMemo(
-    () => [
-      { id: 't1', title: 'Mathematics' },
-      { id: 't2', title: 'Science' },
-      { id: 't3', title: 'History' },
-      { id: 't4', title: 'Geography' },
-      { id: 't5', title: 'Arts' },
-    ],
-    [],
-  )
-
   const currentTopic = topics.find(topic => topic.id === topicId)
+
+  // ADDED: This function will be passed to each game component
+  const awardPoints = (points: number) => {
+      userScore += points;
+  };
 
   if (!currentTopic) {
     return (
@@ -154,16 +160,30 @@ function GamePage() {
       </div>
     )
   }
+  useEffect(() => {
+    if (gamePhase !== 'spelling') {
+      celebrate();
+    }
+  }, [gamePhase]);
 
   const handleSpellingComplete = () => {
+    awardPoints(10); // Award 10 points for completing the spelling game
     setGamePhase('drawing')
   }
 
   const handleDrawingComplete = () => {
+    awardPoints(15); // Award 15 points
+    setGamePhase('matching') // MODIFIED: Go to matching game next
+  }
+
+  // ADDED: Handler for the new matching game
+  const handleMatchingComplete = () => {
+    awardPoints(20); // Award 20 points
     setGamePhase('gallery')
   }
 
   const handleGalleryComplete = () => {
+    awardPoints(5); // Award 5 points
     setGamePhase('completed')
   }
 
@@ -189,6 +209,7 @@ function GamePage() {
                 {currentTopic.title} - {
                   gamePhase === 'spelling' ? 'Spelling Game' :
                   gamePhase === 'drawing' ? 'Drawing Game' :
+                  gamePhase === 'matching' ? 'Matching Game' : // MODIFIED
                   gamePhase === 'gallery' ? 'Image Gallery' :
                   'All Games Completed!'
                 }
@@ -196,34 +217,46 @@ function GamePage() {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {gamePhase === 'spelling' && 'Practice spelling with mirror characters'}
                 {gamePhase === 'drawing' && 'Draw each character to practice writing'}
+                {gamePhase === 'matching' && 'Match the word to the correct image'} {/* ADDED */}
                 {gamePhase === 'gallery' && 'Explore images related to the topic'}
                 {gamePhase === 'completed' && 'Congratulations! You completed all games!'}
               </p>
             </div>
           </div>
 
-          {/* Progress indicator */}
+          {/* MODIFIED: Progress indicator updated to include the matching game */}
           <div className="flex items-center justify-center space-x-2">
             <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
               gamePhase === 'spelling' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300' :
               'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
             }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                gamePhase === 'spelling' ? 'bg-indigo-600' : 'bg-green-600'
-              }`}></div>
+              <div className={`w-2 h-2 rounded-full ${ gamePhase === 'spelling' ? 'bg-indigo-600' : 'bg-green-600' }`}></div>
               <span className="text-sm font-medium">Spelling</span>
             </div>
             <div className="text-gray-400">→</div>
             <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
               gamePhase === 'drawing' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' :
-              gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
+              gamePhase === 'matching' || gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
               'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
             }`}>
               <div className={`w-2 h-2 rounded-full ${
                 gamePhase === 'drawing' ? 'bg-emerald-600' :
-                gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-600' : 'bg-gray-400'
+                gamePhase === 'matching' || gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-600' : 'bg-gray-400'
               }`}></div>
               <span className="text-sm font-medium">Drawing</span>
+            </div>
+            <div className="text-gray-400">→</div>
+            {/* ADDED: New progress step for Matching Game */}
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
+              gamePhase === 'matching' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300' :
+              gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
+              'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                gamePhase === 'matching' ? 'bg-rose-600' :
+                gamePhase === 'gallery' || gamePhase === 'completed' ? 'bg-green-600' : 'bg-gray-400'
+              }`}></div>
+              <span className="text-sm font-medium">Matching</span>
             </div>
             <div className="text-gray-400">→</div>
             <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
@@ -246,6 +279,8 @@ function GamePage() {
             {gamePhase === 'drawing' && (
               <DrawingGame topic={currentTopic.title} onGameComplete={handleDrawingComplete} />
             )}
+            {/* ADDED: Render the new MatchingGame */}
+          
             {gamePhase === 'gallery' && (
               <ImageGalleryGame topic={currentTopic.title} onGameComplete={handleGalleryComplete} />
             )}
@@ -256,7 +291,7 @@ function GamePage() {
                   Congratulations!
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  You have successfully completed all three games for {currentTopic.title}!
+                  You have successfully completed all games for {currentTopic.title}!
                 </p>
                 <button
                   onClick={() => navigate('/')}
@@ -273,7 +308,6 @@ function GamePage() {
   )
 }
 
-
 export function App() {
   return (
     <Router>
@@ -284,6 +318,3 @@ export function App() {
     </Router>
   )
 }
-
-
-
