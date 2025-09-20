@@ -280,8 +280,82 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/game/:topicId" element={<GamePage />} />
+        <Route path="/game/:topicId/spelling" element={<SingleGamePage gameType="spelling" />} />
+        <Route path="/game/:topicId/drawing" element={<SingleGamePage gameType="drawing" />} />
+        <Route path="/game/:topicId/gallery" element={<SingleGamePage gameType="gallery" />} />
       </Routes>
     </Router>
+  )
+
+}
+
+function SingleGamePage({ gameType }: { gameType: 'spelling' | 'drawing' | 'gallery' }) {
+  const { topicId } = useParams<{ topicId: string }>()
+  const navigate = useNavigate()
+  const topics: Topic[] = useMemo(
+    () => [
+      { id: 't1', title: 'Mathematics' },
+      { id: 't2', title: 'Science' },
+      { id: 't3', title: 'History' },
+      { id: 't4', title: 'Geography' },
+      { id: 't5', title: 'Arts' },
+    ],
+    [],
+  )
+  const currentTopic = topics.find(topic => topic.id === topicId)
+  const [completed, setCompleted] = useState(false)
+  if (!currentTopic) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Topic not found</h1>
+          <button
+            onClick={() => navigate('/')}
+            className="rounded-md bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-500"
+          >Back to Home</button>
+        </div>
+      </div>
+    )
+  }
+  const handleComplete = () => setCompleted(true)
+  const goToGame = (type: 'spelling' | 'drawing' | 'gallery') => {
+    setCompleted(false)
+    navigate(`/game/${topicId}/${type}`)
+  }
+  if (completed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🎉</div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{gameType.charAt(0).toUpperCase() + gameType.slice(1)} Game Completed!</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">You have completed the {gameType} game for {currentTopic.title}.</p>
+          <div className="flex justify-center gap-4">
+            {gameType !== 'spelling' && (
+              <button onClick={() => goToGame('spelling')} className="rounded bg-indigo-600 text-white px-4 py-2">Previous Game</button>
+            )}
+            {gameType !== 'gallery' && (
+              <button onClick={() => goToGame(gameType === 'spelling' ? 'drawing' : 'gallery')} className="rounded bg-indigo-600 text-white px-4 py-2">Next Game</button>
+            )}
+            <button onClick={() => navigate('/')} className="rounded bg-gray-300 text-gray-900 px-4 py-2">Home</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="min-h-full flex items-center justify-center">
+      <div className="w-full max-w-xl">
+        {gameType === 'spelling' && (
+          <SpellingGame topic={currentTopic.title} onGameComplete={handleComplete} />
+        )}
+        {gameType === 'drawing' && (
+          <DrawingGame topic={currentTopic.title} onGameComplete={handleComplete} />
+        )}
+        {gameType === 'gallery' && (
+          <ImageGalleryGame topic={currentTopic.title} onGameComplete={handleComplete} />
+        )}
+      </div>
+    </div>
   )
 }
 
