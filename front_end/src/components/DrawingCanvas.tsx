@@ -1,10 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
 
 export function DrawingCanvas() {
+  // Save Drawing button logic (same as DrawingGame)
+  // ...existing code...
+  // Upload drawing to backend (same as DrawingGame)
+  const uploadDrawing = async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const imageData = canvas.toDataURL('image/png')
+    try {
+      const response = await fetch('http://127.0.0.1:8000/upload/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Image saved successfully:', data)
+        alert('Drawing saved to backend ✅')
+      } else {
+        console.error('Failed to upload:', response.statusText)
+        alert('Upload failed ❌')
+      }
+    } catch (err) {
+      console.error('Error uploading drawing:', err)
+      alert('Error while uploading ❌')
+    }
+  }
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [color, setColor] = useState('#ef4444')
   const [brush, setBrush] = useState(5)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
 
   function fillWhiteBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
     ctx.save()
@@ -17,14 +45,12 @@ export function DrawingCanvas() {
     function resize() {
       const canvas = canvasRef.current
       if (!canvas) return
-      const dpr = window.devicePixelRatio || 1
       const rect = canvas.getBoundingClientRect()
       const prev = canvas.width && canvas.height ? canvas.toDataURL() : null
-      canvas.width = Math.max(1, Math.floor(rect.width * dpr))
-      canvas.height = Math.max(1, Math.floor(rect.height * dpr))
+      canvas.width = Math.max(1, Math.floor(rect.width))
+      canvas.height = Math.max(1, Math.floor(rect.height))
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.scale(dpr, dpr)
         // Always start from white background
         fillWhiteBackground(ctx, rect.width, rect.height)
         // Restore previous content best-effort
@@ -76,20 +102,49 @@ export function DrawingCanvas() {
   }
 
   function clearCanvas() {
-    const canvas = canvasRef.current
-    const ctx = getCtx()
-    if (!canvas || !ctx) return
-    // Reset to white background
-    ctx.save()
-    ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.restore()
-    const dpr = window.devicePixelRatio || 1
-    const rect = canvas.getBoundingClientRect()
-    ctx.scale(dpr, dpr)
-    fillWhiteBackground(ctx, rect.width, rect.height)
+  const canvas = canvasRef.current
+  const ctx = getCtx()
+  if (!canvas || !ctx) return
+  ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.restore()
+  const rect = canvas.getBoundingClientRect()
+  fillWhiteBackground(ctx, rect.width, rect.height)
   }
+    async function handleSubmit() {
+    const canvas = canvasRef.current
+    if (!canvas) return
 
+    setLoading(true)
+    setResult(null)
+
+    // Convert canvas to Blob (better than base64 for API calls)
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const formData = new FormData()
+        formData.append('file', blob, 'drawing.png')
+
+        const res = await fetch('http://localhost:8000/predict', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const data = await res.json()
+        setResult(JSON.stringify(data))
+      } catch (err) {
+        console.error('Error submitting image:', err)
+        setResult('Error submitting image')
+      } finally {
+        setLoading(false)
+      }
+    }, 'image/png')
+  }
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
       <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -101,6 +156,14 @@ export function DrawingCanvas() {
           <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{brush}px</span>
         </label>
         <button type="button" onClick={clearCanvas} className="ml-auto rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900">Clear</button>
+         <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50"
+        >
+          {loading ? 'Submitting...' : 'Submit'}
+        </button>
       </div>
       <div className="h-[60vh] sm:h-[70vh]">
         <canvas
@@ -114,8 +177,11 @@ export function DrawingCanvas() {
           onPointerCancel={handlePointerUp}
         />
       </div>
+       {result && (
+        <div className="mt-3 p-2 text-sm rounded bg-gray-100 dark:bg-gray-900">
+          Prediction: {result}
+        </div>
+      )}
     </div>
   )
 }
-
-
