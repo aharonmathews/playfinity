@@ -28,7 +28,7 @@ export function Dashboard({ user, coveredCount, runningCount, progressPercent, s
         <StatCard label="Your Score" value={score} color="rose" />
         <StatCard label="Topics Running" value={runningCount} color="emerald" />
         <StatCard label="Remaining" value={Math.max(coveredCount - Math.max(0, coveredCount - runningCount), 0)} color="amber" />
-        <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+  <div className="rounded-lg border border-gray-200 p-4 bg-[#f8fafc] text-gray-900">
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Overall Progress</div>
           <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded">
             <div className="h-2 bg-indigo-600 rounded" style={{ width: `${Math.min(Math.max(progressPercent, 0), 100)}%` }} />
@@ -45,12 +45,12 @@ function StatCard({ label, value, color }: { label: string; value: number; color
   const colorMap = {
     indigo: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
     emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-    amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+  amber: 'bg-amber-50 text-amber-700',
     // ADDED: Rose color style
     rose: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
   } as const
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+  <div className="rounded-lg border border-gray-200 p-4 bg-[#f8fafc] text-gray-900">
       <div className="text-sm text-gray-500 dark:text-gray-400">{label}</div>
       <div className={`mt-1 inline-flex items-center gap-2 rounded px-2 py-1 text-sm font-medium ${colorMap[color]}`}>{value}</div>
     </div>

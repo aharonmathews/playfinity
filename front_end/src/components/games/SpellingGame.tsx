@@ -86,19 +86,20 @@ export function SpellingGame({ topic, onGameComplete }: Props) {
   }
 
   if (!word) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">Select a topic to start the game.</div>
+    return <div className="text-sm text-gray-500">Select a topic to start the game.</div>
   }
 
   const progress = word.length ? Math.round(((index + 1) / word.length) * 100) : 0
 
+  const navigateHome = () => window.location.href = '/';
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-500 dark:text-gray-400">Character {index + 1} of {word.length}</div>
+  <div className="text-sm text-gray-500">Character {index + 1} of {word.length}</div>
         <div className="text-sm font-medium">Score: {score}</div>
       </div>
 
-      <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded">
+  <div className="h-2 bg-gray-200 rounded">
         <div className="h-2 bg-emerald-600 rounded" style={{ width: `${progress}%` }} />
       </div>
 
@@ -114,16 +115,19 @@ export function SpellingGame({ topic, onGameComplete }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="fixed bottom-6 right-6 z-50">
+        <button onClick={navigateHome} className="rounded bg-indigo-600 text-white px-4 py-2 shadow-lg hover:bg-indigo-700">Home</button>
+      </div>
         {options.map((opt, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => handlePick(opt)}
-            className={`rounded-lg border px-3 py-4 text-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors ${
+            className={`rounded-lg border px-3 py-4 text-xl font-semibold hover:bg-gray-50 transition-colors ${
               feedback === 'correct' && opt === currentChar
-                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300'
-                : 'border-gray-200 dark:border-gray-800'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200'
             }`}
             disabled={feedback !== null}
           >
