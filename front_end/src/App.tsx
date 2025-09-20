@@ -7,6 +7,7 @@ import { SpellingGame } from './components/games/SpellingGame'
 import { DrawingGame } from './components/games/DrawingGame'
 import { ImageGalleryGame } from './components/games/ImageGalleryGame'
 import { GeneralKnowledgeGame } from './components/games/GeneralKnowledgeGame'
+import MathTugOfWarGame from './components/games/MathTugOfWarGame';
 import confetti from "canvas-confetti";
 
 const applauseSound = new Audio("https://www.soundjay.com/human/applause-8.mp3");
@@ -139,21 +140,27 @@ function HomePage() {
             />
 
             <div className="rounded-lg border border-gray-200 p-4 bg-[#f1f5f9] space-y-3">
-              {!showCanvas ? (
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-900">Wanna draw some picture and learn about it?</h3>
-                    <p className="text-sm text-gray-500">Open the canvas and start sketching your ideas below the dashboard.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowCanvas(true)}
-                    className="rounded-md bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-500"
-                  >
-                    Open Canvas
-                  </button>
+              <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">Wanna draw some picture and learn about it?</h3>
+                  <p className="text-sm text-gray-500">Open the canvas and start sketching your ideas below the dashboard.</p>
                 </div>
-              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowCanvas(true)}
+                  className="rounded-md bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-500"
+                >
+                  Open Canvas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/math-tug-of-war')}
+                  className="rounded-md bg-green-600 text-white px-3 py-2 text-sm font-medium hover:bg-green-500 ml-2"
+                >
+                  Play Math Tug of War
+                </button>
+              </div>
+              {!showCanvas ? null : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-semibold text-gray-900">Canvas</h3>
@@ -352,6 +359,7 @@ export function App() {
         <Route path="/game/:topicId/drawing" element={<SingleGamePage gameType="drawing" />} />
         <Route path="/game/:topicId/gallery" element={<SingleGamePage gameType="gallery" />} />
         <Route path="/game/:topicId/gk" element={<SingleGamePage gameType="gk" />} />
+        <Route path="/math-tug-of-war" element={<MathTugOfWarGame />} />
       </Routes>
     </Router>
   )
