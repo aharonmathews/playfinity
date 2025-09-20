@@ -15,7 +15,38 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const currentChar = word[index] || ''
+  const uploadDrawing = async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
 
+    // Convert canvas to Base64 PNG
+    const imageData = canvas.toDataURL("image/png")
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/upload/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          image: imageData,
+          label: currentChar   // optional, store which letter was drawn
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Image saved successfully:", data)
+        alert("Drawing saved to backend ✅")
+      } else {
+        console.error("Failed to upload:", response.statusText)
+        alert("Upload failed ❌")
+      }
+    } catch (err) {
+      console.error("Error uploading drawing:", err)
+      alert("Error while uploading ❌")
+    }
+  }
   // Simple character recognition based on drawing patterns
   const recognizeCharacter = (drawnData: ImageData): boolean => {
     // This is a simplified demo recognition
@@ -286,6 +317,12 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
           className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Check Drawing
+        </button>
+         <button
+          onClick={uploadDrawing}
+          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          Save Drawing
         </button>
       </div>
 
