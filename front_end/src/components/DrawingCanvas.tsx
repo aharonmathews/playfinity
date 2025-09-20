@@ -5,6 +5,8 @@ export function DrawingCanvas() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [color, setColor] = useState('#ef4444')
   const [brush, setBrush] = useState(5)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
 
   function fillWhiteBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
     ctx.save()
@@ -89,7 +91,39 @@ export function DrawingCanvas() {
     ctx.scale(dpr, dpr)
     fillWhiteBackground(ctx, rect.width, rect.height)
   }
+    async function handleSubmit() {
+    const canvas = canvasRef.current
+    if (!canvas) return
 
+    setLoading(true)
+    setResult(null)
+
+    // Convert canvas to Blob (better than base64 for API calls)
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const formData = new FormData()
+        formData.append('file', blob, 'drawing.png')
+
+        const res = await fetch('http://localhost:8000/predict', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const data = await res.json()
+        setResult(JSON.stringify(data))
+      } catch (err) {
+        console.error('Error submitting image:', err)
+        setResult('Error submitting image')
+      } finally {
+        setLoading(false)
+      }
+    }, 'image/png')
+  }
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
       <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -101,6 +135,14 @@ export function DrawingCanvas() {
           <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{brush}px</span>
         </label>
         <button type="button" onClick={clearCanvas} className="ml-auto rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900">Clear</button>
+         <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50"
+        >
+          {loading ? 'Submitting...' : 'Submit'}
+        </button>
       </div>
       <div className="h-[60vh] sm:h-[70vh]">
         <canvas
@@ -114,6 +156,11 @@ export function DrawingCanvas() {
           onPointerCancel={handlePointerUp}
         />
       </div>
+       {result && (
+        <div className="mt-3 p-2 text-sm rounded bg-gray-100 dark:bg-gray-900">
+          Prediction: {result}
+        </div>
+      )}
     </div>
   )
 }
