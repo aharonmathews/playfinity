@@ -10,6 +10,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
 import TypeQuestGame from "../components/games/TypeQuestGame";
 import RhymeRoundupGame from "../components/games/RhymeRoundupGame";
+import SyllableSplitterGame from "../components/games/SyllableSplitterGame";
 
 function HomePage() {
   const bubbleContainerRef = useRef<HTMLDivElement>(null);
@@ -22,6 +23,7 @@ function HomePage() {
   const { user, loading, setUser } = useUser();
   const [showTypeQuest, setShowTypeQuest] = useState(false);
   const [showRhymeRoundup, setShowRhymeRoundup] = useState(false);
+  const [showSyllableSplitter, setShowSyllableSplitter] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const navigate = useNavigate();
 
@@ -243,26 +245,26 @@ function HomePage() {
             />
 
             {/* Games Section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* TypeQuest Game Button */}
               <div
                 className="bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 p-6 rounded-lg cursor-pointer transition-all duration-300 group shadow-lg hover:shadow-xl transform hover:scale-105"
                 onClick={() => setShowTypeQuest(true)}
               >
                 <div className="text-center text-white">
-                  <div className="text-5xl mb-3 group-hover:animate-bounce">
+                  <div className="text-4xl mb-3 group-hover:animate-bounce">
                     ⚔️
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">TypeQuest</h3>
-                  <p className="text-purple-100 text-sm mb-3">
+                  <h3 className="text-lg font-bold mb-2">TypeQuest</h3>
+                  <p className="text-purple-100 text-xs mb-3">
                     Battle monsters with math skills!
                   </p>
-                  <div className="flex justify-center gap-2 text-xs">
-                    <span className="bg-purple-500 px-2 py-1 rounded-full">
-                      Math Combat
+                  <div className="flex justify-center gap-1 text-xs">
+                    <span className="bg-purple-500 px-2 py-1 rounded-full text-xs">
+                      Math
                     </span>
-                    <span className="bg-purple-500 px-2 py-1 rounded-full">
-                      RPG Style
+                    <span className="bg-purple-500 px-2 py-1 rounded-full text-xs">
+                      RPG
                     </span>
                   </div>
                 </div>
@@ -274,21 +276,43 @@ function HomePage() {
                 onClick={() => setShowRhymeRoundup(true)}
               >
                 <div className="text-center text-white">
-                  <div className="text-5xl mb-3 group-hover:animate-bounce">
+                  <div className="text-4xl mb-3 group-hover:animate-bounce">
                     🤠
                   </div>
-                  <h3 className="text-xl font-bold mb-2">
-                    Dyslexic Rhyming Words
-                  </h3>
-                  <p className="text-green-100 text-sm mb-3">
+                  <h3 className="text-lg font-bold mb-2">Rhyming Words</h3>
+                  <p className="text-green-100 text-xs mb-3">
                     Catch falling words that rhyme!
                   </p>
-                  <div className="flex justify-center gap-2 text-xs">
-                    <span className="bg-green-500 px-2 py-1 rounded-full">
+                  <div className="flex justify-center gap-1 text-xs">
+                    <span className="bg-green-500 px-2 py-1 rounded-full text-xs">
                       Phonics
                     </span>
-                    <span className="bg-green-500 px-2 py-1 rounded-full">
-                      Dyslexia-Friendly
+                    <span className="bg-green-500 px-2 py-1 rounded-full text-xs">
+                      Dyslexia
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Syllable Splitter Game Button */}
+              <div
+                className="bg-gradient-to-br from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 p-6 rounded-lg cursor-pointer transition-all duration-300 group shadow-lg hover:shadow-xl transform hover:scale-105"
+                onClick={() => setShowSyllableSplitter(true)}
+              >
+                <div className="text-center text-white">
+                  <div className="text-4xl mb-3 group-hover:animate-bounce">
+                    📖
+                  </div>
+                  <h3 className="text-lg font-bold mb-2">Syllable Splitter</h3>
+                  <p className="text-amber-100 text-xs mb-3">
+                    Learn to decode words!
+                  </p>
+                  <div className="flex justify-center gap-1 text-xs">
+                    <span className="bg-amber-500 px-2 py-1 rounded-full text-xs">
+                      Reading
+                    </span>
+                    <span className="bg-amber-500 px-2 py-1 rounded-full text-xs">
+                      Phonics
                     </span>
                   </div>
                 </div>
@@ -300,18 +324,18 @@ function HomePage() {
                 onClick={() => navigate("/test-games")}
               >
                 <div className="text-center text-white">
-                  <div className="text-5xl mb-3 group-hover:animate-spin">
+                  <div className="text-4xl mb-3 group-hover:animate-spin">
                     🧪
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">Test Games</h3>
-                  <p className="text-red-100 text-sm mb-3">
+                  <h3 className="text-lg font-bold mb-2">Test Games</h3>
+                  <p className="text-red-100 text-xs mb-3">
                     Try experimental learning games
                   </p>
-                  <div className="flex justify-center gap-2 text-xs">
-                    <span className="bg-red-500 px-2 py-1 rounded-full">
+                  <div className="flex justify-center gap-1 text-xs">
+                    <span className="bg-red-500 px-2 py-1 rounded-full text-xs">
                       No API
                     </span>
-                    <span className="bg-red-500 px-2 py-1 rounded-full">
+                    <span className="bg-red-500 px-2 py-1 rounded-full text-xs">
                       Testing
                     </span>
                   </div>
@@ -395,6 +419,25 @@ function HomePage() {
             </div>
             <div className="px-4 pb-4">
               <RhymeRoundupGame />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Syllable Splitter Game Modal */}
+      {showSyllableSplitter && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[95vh] overflow-auto shadow-2xl">
+            <div className="flex justify-end p-4">
+              <button
+                onClick={() => setShowSyllableSplitter(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-4 pb-4">
+              <SyllableSplitterGame />
             </div>
           </div>
         </div>
