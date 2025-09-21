@@ -1,287 +1,459 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
-type GameProps = { topic: string; onGameComplete: () => void };
-
-type Question = {
+// --- INTERFACES --- //
+interface QuizQuestion {
   question: string;
   options: string[];
-  answer: number;
-};
+  correct_answer: string;
+}
 
-const topicQuestions: Record<string, Question[]> = {
-  Mathematics: [
-    {
-      question: "What is the value of π (pi) rounded to two decimal places?",
-      options: ["3.14", "2.72", "1.62", "4.20"],
-      answer: 0,
-    },
-    {
-      question: "Which shape has three sides?",
-      options: ["Square", "Triangle", "Circle", "Rectangle"],
-      answer: 1,
-    },
-    {
-      question: "What is 7 x 8?",
-      options: ["54", "56", "64", "58"],
-      answer: 1,
-    },
-    {
-      question: "Which is a prime number?",
-      options: ["4", "6", "7", "8"],
-      answer: 2,
-    },
-    {
-      question: "What is the square root of 81?",
-      options: ["9", "8", "7", "6"],
-      answer: 0,
-    },
-  ],
-  Science: [
-    {
-      question: "What planet is known as the Red Planet?",
-      options: ["Earth", "Mars", "Jupiter", "Venus"],
-      answer: 1,
-    },
-    {
-      question: "What gas do plants absorb from the atmosphere?",
-      options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Hydrogen"],
-      answer: 1,
-    },
-    {
-      question: "What is H2O commonly known as?",
-      options: ["Salt", "Water", "Sugar", "Oxygen"],
-      answer: 1,
-    },
-    {
-      question: "Which organ pumps blood through the body?",
-      options: ["Liver", "Heart", "Lung", "Brain"],
-      answer: 1,
-    },
-    {
-      question: "What is the process by which plants make food?",
-      options: ["Respiration", "Photosynthesis", "Digestion", "Fermentation"],
-      answer: 1,
-    },
-  ],
-  History: [
-    {
-      question: "Who was the first President of the United States?",
-      options: [
-        "Abraham Lincoln",
-        "George Washington",
-        "John Adams",
-        "Thomas Jefferson",
-      ],
-      answer: 1,
-    },
-    {
-      question: "In which year did World War II end?",
-      options: ["1945", "1939", "1918", "1950"],
-      answer: 0,
-    },
-    {
-      question: "Who discovered America?",
-      options: [
-        "Christopher Columbus",
-        "Marco Polo",
-        "Vasco da Gama",
-        "James Cook",
-      ],
-      answer: 0,
-    },
-    {
-      question: "Which ancient civilization built the pyramids?",
-      options: ["Greek", "Roman", "Egyptian", "Chinese"],
-      answer: 2,
-    },
-    {
-      question: "Who was known as the Maid of Orléans?",
-      options: ["Cleopatra", "Joan of Arc", "Queen Victoria", "Elizabeth I"],
-      answer: 1,
-    },
-  ],
-  Geography: [
-    {
-      question: "Which is the largest continent?",
-      options: ["Africa", "Asia", "Europe", "Australia"],
-      answer: 1,
-    },
-    {
-      question: "What is the capital of France?",
-      options: ["Berlin", "Madrid", "Paris", "Rome"],
-      answer: 2,
-    },
-    {
-      question: "Which ocean is the deepest?",
-      options: ["Atlantic", "Indian", "Arctic", "Pacific"],
-      answer: 3,
-    },
-    {
-      question: "Mount Everest is located in which mountain range?",
-      options: ["Andes", "Rockies", "Himalayas", "Alps"],
-      answer: 2,
-    },
-    {
-      question: "Which country has the most population?",
-      options: ["India", "USA", "China", "Brazil"],
-      answer: 2,
-    },
-  ],
-  Arts: [
-    {
-      question: "Who painted the Mona Lisa?",
-      options: [
-        "Vincent van Gogh",
-        "Leonardo da Vinci",
-        "Pablo Picasso",
-        "Claude Monet",
-      ],
-      answer: 1,
-    },
-    {
-      question: "Which instrument has keys, pedals, and strings?",
-      options: ["Guitar", "Piano", "Violin", "Drum"],
-      answer: 1,
-    },
-    {
-      question: "Who wrote Romeo and Juliet?",
-      options: [
-        "Charles Dickens",
-        "William Shakespeare",
-        "Mark Twain",
-        "Jane Austen",
-      ],
-      answer: 1,
-    },
-    {
-      question: "Which art movement is Salvador Dalí associated with?",
-      options: ["Surrealism", "Impressionism", "Cubism", "Baroque"],
-      answer: 0,
-    },
-    {
-      question: "What is the primary color?",
-      options: ["Green", "Red", "Purple", "Orange"],
-      answer: 1,
-    },
-  ],
-};
+interface GameProps {
+  topic: string;
+  onGameComplete: () => void;
+  gameData?: {
+    questions: QuizQuestion[];
+    instructions?: string;
+  } | null;
+}
 
-export function GeneralKnowledgeGame({ topic, onGameComplete }: GameProps) {
-  const questions = topicQuestions[topic] || [];
+// --- FALLBACK DATA --- //
+const fallbackQuestions = [
+  {
+    question: `What do you know about this topic?`,
+    options: ["A lot", "A little", "Nothing", "Everything"],
+    correct_answer: "A little",
+  },
+  {
+    question: `How would you describe this topic?`,
+    options: ["Interesting", "Boring", "Complex", "Simple"],
+    correct_answer: "Interesting",
+  },
+  {
+    question: `Where might you encounter this topic?`,
+    options: ["Everywhere", "School", "Work", "Home"],
+    correct_answer: "School",
+  },
+];
+
+// --- GAME COMPONENT --- //
+function GeneralKnowledgeGame({ topic, onGameComplete, gameData }: GameProps) {
+  // Process quiz data from Firebase
+  const processQuizData = () => {
+    if (!gameData || !gameData.questions || gameData.questions.length === 0) {
+      console.log("🎯 Using fallback questions for topic:", topic);
+      return fallbackQuestions.map((q) => ({
+        question: q.question.replace("this topic", topic),
+        options: q.options,
+        correctIndex: q.options.indexOf(q.correct_answer),
+      }));
+    }
+
+    console.log(
+      "🎯 Using Firebase quiz data:",
+      gameData.questions.length,
+      "questions"
+    );
+
+    return gameData.questions.map((q) => {
+      // Find the correct answer index
+      const correctIndex = q.options.indexOf(q.correct_answer);
+
+      return {
+        question: q.question,
+        options: q.options,
+        correctIndex: correctIndex >= 0 ? correctIndex : 0, // Fallback to first option if not found
+      };
+    });
+  };
+
+  // Game state
+  const [questions] = useState(processQuizData());
   const [current, setCurrent] = useState(0);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
-  function handleSelect(idx: number) {
-    setSelected(idx);
-    if (questions[current] && idx === questions[current].answer) {
-      setTimeout(() => {
-        setScore((s) => s + 1);
-        if (current < questions.length - 1) {
-          setCurrent((c) => c + 1);
-          setSelected(null);
-        } else {
-          setShowResult(true);
-        }
-      }, 600); // short delay for feedback
-    }
-    // If incorrect, keep selected and allow retry
-  }
+  // Player animation state
+  const [playerRow, setPlayerRow] = useState(0);
+  const [playerCol, setPlayerCol] = useState<number | null>(null);
+  const [anim, setAnim] = useState("idle");
+  const [correctBuildings, setCorrectBuildings] = useState(
+    Array(questions.length).fill(null)
+  );
+  const [wronglySelectedBuilding, setWronglySelectedBuilding] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
+  const [jumpPosition, setJumpPosition] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
 
-  function handleNext() {
-    if (selected === questions[current].answer) {
-      setScore((s) => s + 1);
-    }
+  // Function to reset the game state for a retry
+  function resetGame() {
+    setCurrent(0);
+    setScore(0);
     setSelected(null);
-    if (current < questions.length - 1) {
-      setCurrent((c) => c + 1);
+    setShowResult(false);
+    setPlayerRow(0);
+    setPlayerCol(null);
+    setAnim("idle");
+    setCorrectBuildings(Array(questions.length).fill(null));
+    setShowPopup(false);
+    setWronglySelectedBuilding(null);
+    setJumpPosition(null);
+  }
+
+  // Handle user's answer selection
+  function handleSelect(idx: number) {
+    if (selected !== null) return;
+    setSelected(idx);
+
+    const isCorrect =
+      questions[current] && idx === questions[current].correctIndex;
+
+    console.log(
+      `🎯 Question ${current + 1}: Selected option ${idx}, Correct: ${
+        questions[current].correctIndex
+      }, Result: ${isCorrect ? "Correct" : "Wrong"}`
+    );
+
+    if (isCorrect) {
+      // --- Stage 1: Jump ---
+      setAnim("jump");
+      // Set temporary jump target without triggering world scroll
+      setJumpPosition({ row: current + 1, col: idx });
+
+      // --- Stage 2: Scroll & Finalize ---
+      setTimeout(() => {
+        setAnim("idle");
+        // Update the real player row, which triggers the world scroll
+        setPlayerRow(current + 1);
+        setPlayerCol(idx);
+        setScore((s) => s + 1);
+        setCorrectBuildings((prev) => {
+          const updated = [...prev];
+          updated[current] = idx;
+          return updated;
+        });
+        // Clear the temporary jump position, player now tracks the scrolled building
+        setJumpPosition(null);
+
+        // --- Stage 3: Next Question ---
+        setTimeout(() => {
+          if (current < questions.length - 1) {
+            setCurrent((c) => c + 1);
+            setSelected(null);
+          } else {
+            setShowResult(true);
+          }
+        }, 500); // Wait for scroll to finish
+      }, 500); // Duration of jump
     } else {
-      setShowResult(true);
+      // --- Stage 1: Jump to wrong building ---
+      setAnim("jump");
+      setJumpPosition({ row: current + 1, col: idx }); // Jump to wrong building
+
+      setTimeout(() => {
+        // --- Stage 2: Land and prepare to fall ---
+        setPlayerRow(current + 1); // Officially move player to the wrong spot
+        setPlayerCol(idx);
+        setJumpPosition(null);
+        setWronglySelectedBuilding({ row: current, col: idx });
+
+        setTimeout(() => {
+          // A brief pause on the building
+          setAnim("fall");
+          // --- Stage 3: Fall ---
+          setTimeout(() => {
+            setPlayerRow(0); // Reset player's logical position
+            setAnim("idle");
+            setShowPopup(true);
+          }, 700); // Fall duration
+        }, 200);
+      }, 500); // Jump duration
     }
   }
 
-  function navigateHome() {
-    window.location.href = "/";
-  }
+  // Layout Constants
+  const BUILDING_WIDTH = 150;
+  const LEVEL_HEIGHT = 110;
+  const PERSON_SIZE = 32;
 
-  if (questions.length === 0) {
+  // Show loading state if no questions
+  if (!questions || questions.length === 0) {
     return (
-      <div className="text-center text-gray-500">
-        No questions available for this topic.
+      <div className="flex flex-col items-center justify-center min-h-screen bg-sky-100 p-4">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-2xl p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4 text-gray-700">
+            Loading Quiz...
+          </h2>
+          <div className="text-gray-600">Preparing questions for {topic}</div>
+        </div>
       </div>
     );
   }
 
+  // Final result screen
   if (showResult) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] relative">
-        <div className="absolute top-6 right-6 z-50">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-sky-100 p-4">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-2xl p-8 text-center">
+          <h2 className="text-3xl font-bold mb-4 text-indigo-700">
+            🎯 {topic} Quiz Completed!
+          </h2>
+          <div className="text-xl mb-6 text-gray-700">
+            Your Score:{" "}
+            <span className="font-bold text-2xl text-green-600">{score}</span> /{" "}
+            {questions.length}
+          </div>
+          <div className="mb-6 text-gray-600">
+            {score === questions.length
+              ? "🏆 Perfect Score!"
+              : score >= questions.length * 0.8
+              ? "🌟 Excellent Work!"
+              : score >= questions.length * 0.6
+              ? "👍 Good Job!"
+              : "📚 Keep Learning!"}
+          </div>
           <button
-            onClick={navigateHome}
-            className="rounded bg-indigo-600 text-white px-4 py-2 shadow-lg hover:bg-indigo-700"
+            onClick={onGameComplete}
+            className="rounded-lg bg-green-600 text-white px-8 py-3 font-semibold text-lg hover:bg-green-700 transition-transform hover:scale-105 shadow-lg"
           >
-            Home
+            Complete Quiz Game
           </button>
         </div>
-        <h2 className="text-2xl font-bold mb-6">Quiz Completed!</h2>
-        <div className="text-lg mb-4">
-          Your Score: {score} / {questions.length}
-        </div>
-        <button
-          onClick={onGameComplete}
-          className="rounded bg-green-600 text-white px-6 py-2 font-semibold hover:bg-green-700"
-        >
-          Finish
-        </button>
       </div>
     );
   }
 
-  const q = questions[current];
+  // Main game view
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] relative">
-      <div className="absolute top-6 right-6 z-50">
-        <button
-          onClick={navigateHome}
-          className="rounded bg-indigo-600 text-white px-4 py-2 shadow-lg hover:bg-indigo-700"
-        >
-          Home
-        </button>
-      </div>
-      <div className="flex items-center justify-center gap-10 mb-2">
-        <div className="text-sm text-gray-500">
-          Question {current + 1} of {questions.length}
-        </div>
-        <div className="text-sm font-medium">Score: {score}</div>
-      </div>
-      {q ? (
-        <>
-          <h3 className="text-xl font-semibold mb-6 text-center max-w-xl">
-            {q.question}
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-6 justify-center mt-4">
-            {q.options.map((opt, idx) => (
+    <div className="w-full h-screen bg-gradient-to-b from-sky-200 to-sky-400 flex flex-col items-center justify-between p-4 overflow-hidden relative">
+      <style>
+        {`
+            .building-fall {
+                transition: transform 0.7s cubic-bezier(0.6, -0.28, 0.735, 0.045);
+                transform: translateY(100vh) rotate(-15deg) !important;
+            }
+        `}
+      </style>
+
+      {/* --- DYNAMIC ELEMENTS (Popups, Player) --- */}
+
+      {/* Wrong answer popup */}
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 flex flex-col items-center text-center max-w-md">
+            <span className="text-5xl mb-3">💀</span>
+            <h2 className="text-2xl font-bold mb-4 text-gray-800">
+              You fell! Game Over.
+            </h2>
+            <div className="text-gray-600 mb-4">
+              The correct answer was:{" "}
+              <span className="font-bold text-green-600">
+                {questions[current]?.options[questions[current]?.correctIndex]}
+              </span>
+            </div>
+            <div className="flex gap-4 mt-2">
               <button
-                key={idx}
-                type="button"
-                onClick={() => handleSelect(idx)}
-                className={`rounded-lg border px-6 py-6 text-lg font-semibold hover:bg-gray-50 transition-colors ${
-                  selected === idx
-                    ? idx === q.answer
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                      : "border-red-500 bg-red-50 text-red-700"
-                    : "border-gray-200"
-                }`}
-                disabled={selected === idx && idx === q.answer}
+                onClick={resetGame}
+                className="rounded-lg bg-yellow-500 text-white px-5 py-2 shadow-md hover:bg-yellow-600 transition-transform hover:scale-105"
               >
-                {opt}
+                🔄 Retry Quiz
               </button>
-            ))}
+              <button
+                onClick={onGameComplete}
+                className="rounded-lg bg-indigo-600 text-white px-5 py-2 shadow-md hover:bg-indigo-700 transition-transform hover:scale-105"
+              >
+                🏠 Back to Games
+              </button>
+            </div>
           </div>
-        </>
-      ) : null}
-      {/* Next button removed, navigation happens automatically after selecting an option */}
+        </div>
+      )}
+
+      {/* Player Character */}
+      {(() => {
+        if (showPopup || showResult) return null;
+
+        let horizontalOffset = 0;
+        let verticalLevel = 20; // Default to ground level
+        let fallClass = anim === "fall" ? "building-fall" : "";
+
+        const activePosition = jumpPosition || {
+          row: playerRow,
+          col: playerCol,
+        };
+        const scrollOffset = playerRow > 1 ? (playerRow - 1) * LEVEL_HEIGHT : 0;
+
+        if (activePosition.row > 0 && activePosition.col !== null) {
+          const options = questions[activePosition.row - 1]?.options || [];
+          const numOptions = options.length;
+          if (numOptions > 0) {
+            horizontalOffset =
+              (activePosition.col - (numOptions - 1) / 2) *
+              (BUILDING_WIDTH + 24);
+          }
+
+          const buildingBottom = (activePosition.row - 1) * LEVEL_HEIGHT + 20;
+          const buildingHeight = 100;
+          const buildingNaturalTop = buildingBottom + buildingHeight;
+
+          // Use the REAL playerRow for scroll offset, but the JUMP position for the target building
+          verticalLevel = buildingNaturalTop - scrollOffset;
+        }
+
+        return (
+          <div
+            className={`absolute transition-all duration-500 ease-out flex flex-col items-center ${fallClass}`}
+            style={{
+              bottom: verticalLevel,
+              left: `calc(50% + ${horizontalOffset}px)`,
+              transform: "translateX(-50%)",
+              zIndex: 20,
+              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3))",
+              transitionProperty: "bottom, left",
+            }}
+          >
+            <span style={{ fontSize: PERSON_SIZE }}>
+              {anim === "fall" ? "💀" : "🧑‍🚀"}
+            </span>
+          </div>
+        );
+      })()}
+
+      {/* --- STATIC UI ELEMENTS --- */}
+
+      {/* Top Section: Question and Score */}
+      <div className="w-full max-w-5xl bg-white/70 backdrop-blur-sm p-4 rounded-xl shadow-lg text-center z-10">
+        <h2 className="text-sm font-semibold text-indigo-600 mb-2">
+          🎯 {topic} Quiz Challenge
+        </h2>
+        <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
+          {questions[current]?.question || "Quiz Complete!"}
+        </h3>
+        <div className="flex items-center justify-center gap-10 mt-2">
+          <div className="text-md text-gray-600">
+            Question {current + 1} of {questions.length}
+          </div>
+          <div className="text-md font-medium text-indigo-600">
+            Score: {score}
+          </div>
+        </div>
+      </div>
+
+      {/* Game Area: Buildings */}
+      <div
+        className="absolute bottom-0 w-full transition-transform duration-500 ease-out"
+        style={{
+          height: `${questions.length * LEVEL_HEIGHT + 240}px`,
+          transform: `translateY(${
+            playerRow > 1 ? (playerRow - 1) * LEVEL_HEIGHT : 0
+          }px)`,
+        }}
+      >
+        {/* Ground */}
+        <div className="absolute bottom-0 left-0 right-0 h-5 bg-green-700 z-0" />
+        <div className="absolute bottom-5 left-0 right-0 h-5 bg-green-600 z-0" />
+
+        {/* Render all rows of buildings */}
+        {[...Array(questions.length)].map((_, rowIdx) => {
+          const options = questions[rowIdx]?.options || [];
+
+          return (
+            <div
+              key={rowIdx}
+              className="absolute w-full"
+              style={{
+                bottom: rowIdx * LEVEL_HEIGHT + 20,
+                height: "100px",
+                zIndex: rowIdx === current ? 10 : 2,
+              }}
+            >
+              {options.map((option, optionIdx) => {
+                const isCurrentRow = rowIdx === current;
+                const isPlatform =
+                  rowIdx === current - 1 &&
+                  correctBuildings[rowIdx] === optionIdx;
+
+                if (!isCurrentRow && !isPlatform) return null;
+
+                let buildingClass = "transition-all duration-300 absolute";
+                const isSelected = selected === optionIdx && isCurrentRow;
+                const isCorrect =
+                  questions[current]?.correctIndex === optionIdx;
+
+                if (
+                  wronglySelectedBuilding &&
+                  wronglySelectedBuilding.row === rowIdx &&
+                  wronglySelectedBuilding.col === optionIdx
+                ) {
+                  buildingClass += " building-fall";
+                }
+
+                return (
+                  <div
+                    key={optionIdx}
+                    onClick={() => isCurrentRow && handleSelect(optionIdx)}
+                    className={`${buildingClass} ${
+                      isCurrentRow && selected === null
+                        ? "cursor-pointer hover:scale-105"
+                        : "cursor-default"
+                    }`}
+                    style={{
+                      width: BUILDING_WIDTH,
+                      height: 100,
+                      background: isSelected
+                        ? isCorrect
+                          ? "#d1fae5"
+                          : "#fee2e2"
+                        : isPlatform
+                        ? "#a7f3d0"
+                        : "#e0e7ff",
+                      border: `3px solid ${
+                        isSelected
+                          ? isCorrect
+                            ? "#10b981"
+                            : "#ef4444"
+                          : isPlatform
+                          ? "#059669"
+                          : "#6366f1"
+                      }`,
+                      borderRadius: "8px 8px 0 0",
+                      boxShadow: `0 4px 16px ${
+                        isSelected
+                          ? isCorrect
+                            ? "rgba(16,185,129,0.3)"
+                            : "rgba(239,68,68,0.3)"
+                          : isPlatform
+                          ? "rgba(34,197,94,0.2)"
+                          : "rgba(99,102,241,0.2)"
+                      }`,
+                      left: `calc(50% + ${
+                        (optionIdx - (options.length - 1) / 2) *
+                        (BUILDING_WIDTH + 24)
+                      }px)`,
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    <div
+                      className="h-full flex items-center justify-center font-semibold text-indigo-900 text-center p-2 text-sm md:text-base"
+                      style={{ wordBreak: "break-word" }}
+                    >
+                      {isPlatform ? "✅" : option}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
+export { GeneralKnowledgeGame };
+export default GeneralKnowledgeGame;

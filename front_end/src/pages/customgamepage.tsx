@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { SpellingGame } from "../components/games/SpellingGame";
 import { DrawingGame } from "../components/games/DrawingGame";
 import { ImageGalleryGame } from "../components/games/ImageGalleryGame";
-import { GeneralKnowledgeGame } from "../components/games/GeneralKnowledgeGame";
+import GeneralKnowledgeGame from "../components/games/GeneralKnowledgeGame";
 import { useScore } from "../contexts/ScoreContext";
 import { celebrate } from "../App";
 
@@ -519,8 +519,8 @@ function CustomGamePage() {
             {gamePhase === "gk" && finalGameData?.quiz && (
               <GeneralKnowledgeGame
                 topic={topic}
-                questions={finalGameData.quiz.questions}
-                onGameComplete={handleGKComplete}
+                onGameComplete={handleGKComplete} // ✅ Fixed function name
+                gameData={finalGameData.quiz} // ✅ Use finalGameData instead of gameData
               />
             )}
 
