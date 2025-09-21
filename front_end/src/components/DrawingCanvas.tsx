@@ -20,14 +20,11 @@ export function DrawingCanvas() {
   const [brush, setBrush] = useState(5);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-
-  // ✅ Add missing state variables
   const [generatingGames, setGeneratingGames] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string>("");
 
   const navigate = useNavigate();
 
-  // ...all your existing canvas functions (unchanged)...
   function fillWhiteBackground(
     ctx: CanvasRenderingContext2D,
     width: number,
@@ -108,7 +105,7 @@ export function DrawingCanvas() {
     const rect = canvas.getBoundingClientRect();
     fillWhiteBackground(ctx, rect.width, rect.height);
     setResult(null);
-    setSelectedTag(""); // ✅ Reset selected tag
+    setSelectedTag("");
   }
 
   async function handleSubmit() {
@@ -128,6 +125,7 @@ export function DrawingCanvas() {
         const formData = new FormData();
         formData.append("file", blob, "drawing.png");
 
+        console.log("🔍 Sending image to backend for analysis...");
         const res = await fetch("http://127.0.0.1:8000/predict", {
           method: "POST",
           body: formData,
@@ -138,16 +136,16 @@ export function DrawingCanvas() {
         }
 
         const data: AnalysisResult = await res.json();
-        console.log("🔍 Analysis result:", data); // ✅ Add debug log
+        console.log("✅ Analysis result:", data);
         setResult(data);
       } catch (err) {
-        console.error("Error submitting image:", err);
+        console.error("❌ Error submitting image:", err);
         setResult({
           success: false,
           tags: [],
           description: `Error: ${
             err instanceof Error ? err.message : "Unknown error"
-          }`,
+          }. Make sure the backend is running on http://127.0.0.1:8000`,
           analysis: null,
         });
       } finally {
@@ -156,59 +154,89 @@ export function DrawingCanvas() {
     }, "image/png");
   }
 
-  // ✅ Fixed handleTagClick function
+  // ✅ Single unified function for handling topic clicks
   const handleTagClick = async (tagName: string) => {
-    console.log(`🎯 Tag clicked: ${tagName}`);
+    console.log(`🎯 Topic selected: ${tagName}`);
     setSelectedTag(tagName);
     setGeneratingGames(true);
 
     try {
-      console.log(`🎮 Generating games for topic: ${tagName}`);
+      // Step 1: Check if topic exists in Firebase
+      console.log(`🔍 Validating topic: ${tagName}`);
+      const validateResponse = await fetch(
+        "http://127.0.0.1:8000/validate-topic",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: tagName,
+            age_group: "7-11",
+          }),
+        }
+      );
 
-      const response = await fetch("http://127.0.0.1:8000/generate-games", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          topic: tagName,
-          age_group: "7-11",
-          generate_images: true, // ✅ Enable image generation
-        }),
-      });
-
-      console.log(`📡 Response status: ${response.status}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!validateResponse.ok) {
+        throw new Error(`Validation failed: ${validateResponse.status}`);
       }
 
-      const result = await response.json();
-      console.log("🎯 Games generated successfully:", result);
+      const validation = await validateResponse.json();
+      console.log("📋 Validation result:", validation);
 
-      if (result.success && result.games) {
-        console.log("🚀 Navigating to custom-games with data:", {
-          topic: tagName,
-          gameData: result.games,
-          images: result.images || null, // ✅ Pass generated images
-        });
+      if (validation.success) {
+        if (validation.games_exist) {
+          // ✅ Games exist in Firebase, use them directly
+          console.log("✅ Using existing games from Firebase");
+          navigate("/custom-games", {
+            state: {
+              topic: tagName,
+              gameData: validation.games,
+              images: validation.games.gallery?.images || null,
+              source: "firebase",
+            },
+          });
+        } else {
+          // ❌ Games don't exist, generate new ones
+          console.log("🎨 Generating new games and images...");
+          const generateResponse = await fetch(
+            "http://127.0.0.1:8000/generate-games",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                topic: tagName,
+                age_group: "7-11",
+              }),
+            }
+          );
 
-        // Navigate to custom-games
-        navigate("/custom-games", {
-          state: {
-            topic: tagName,
-            gameData: result.games,
-            images: result.images || null, // ✅ Include images
-          },
-        });
+          if (!generateResponse.ok) {
+            throw new Error(`Generation failed: ${generateResponse.status}`);
+          }
+
+          const gameResult = await generateResponse.json();
+          console.log("🎮 Generation result:", gameResult);
+
+          if (gameResult.success) {
+            navigate("/custom-games", {
+              state: {
+                topic: tagName,
+                gameData: gameResult.games,
+                images: gameResult.images || null,
+                source: "generated",
+              },
+            });
+          } else {
+            throw new Error(gameResult.error || "Failed to generate games");
+          }
+        }
       } else {
-        throw new Error(
-          "Failed to generate games: " + (result.error || "Unknown error")
-        );
+        throw new Error(validation.error || "Topic validation failed");
       }
     } catch (error) {
-      console.error("❌ Error generating games:", error);
-      alert(`Failed to generate games for "${tagName}". Please try again.`);
+      console.error("❌ Error handling topic:", error);
+      alert(
+        `Failed to load games for "${tagName}". Error: ${error.message}. Please make sure the backend is running.`
+      );
     } finally {
       setGeneratingGames(false);
     }
@@ -270,15 +298,29 @@ export function DrawingCanvas() {
         />
       </div>
 
+      {/* ✅ Connection status indicator */}
+      <div className="mt-2 text-xs text-gray-500">
+        Backend Status:
+        <span className="ml-1 px-2 py-1 rounded text-white text-xs bg-green-500">
+          {loading || generatingGames ? "🟢 Connected" : "⚪ Ready"}
+        </span>
+      </div>
+
       {/* ✅ Loading state for game generation */}
       {generatingGames && (
         <div className="mt-3 p-3 rounded bg-yellow-100 border border-yellow-300">
           <div className="flex items-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-2"></div>
             <span className="text-yellow-800 text-sm font-medium">
-              🎮 Generating educational games for "{selectedTag}"...
+              🎮{" "}
+              {selectedTag
+                ? `Processing "${selectedTag}"...`
+                : "Loading games..."}
             </span>
           </div>
+          <p className="text-xs text-yellow-700 mt-1">
+            Checking database and generating content...
+          </p>
         </div>
       )}
 
@@ -308,7 +350,7 @@ export function DrawingCanvas() {
                     {result.tags.map((tag, index) => (
                       <button
                         key={index}
-                        onClick={() => handleTagClick(tag.name)} // ✅ Fixed: pass tag.name
+                        onClick={() => handleTagClick(tag.name)}
                         disabled={generatingGames}
                         className={`px-3 py-2 text-white rounded text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
                           selectedTag === tag.name

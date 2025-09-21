@@ -4,7 +4,8 @@ type GameProps = {
   topic: string;
   onGameComplete: () => void;
   images?: Array<{
-    image_base64: string;
+    url?: string; // ✅ Firebase Storage URL
+    image_base64?: string; // ✅ Fallback base64
     prompt: string;
     index: number;
   }> | null;
@@ -36,13 +37,47 @@ export function ImageGalleryGame({ topic, onGameComplete, images }: GameProps) {
       [];
 
     if (images && images.length > 0) {
-      // Use generated images
+      // ✅ Use generated images - handle both Firebase Storage URLs and base64
       console.log("🎨 Using generated images:", images.length);
-      imagesToUse = images.map((img, idx) => ({
-        url: img.image_base64,
-        prompt: img.prompt,
-        index: idx,
-      }));
+
+      imagesToUse = images.map((img, idx) => {
+        // ✅ Prefer Firebase Storage URL over base64
+        const imageUrl =
+          img.url ||
+          (img.image_base64 && img.image_base64.startsWith("data:")
+            ? img.image_base64
+            : `data:image/png;base64,${img.image_base64}`);
+
+        console.log(`🔍 Image ${idx}:`, {
+          hasUrl: !!img.url,
+          hasBase64: !!img.image_base64,
+          finalUrl: imageUrl?.substring(0, 50) + "...",
+          prompt: img.prompt,
+        });
+
+        return {
+          url: imageUrl || fallbackImageUrls[idx % fallbackImageUrls.length],
+          prompt: img.prompt,
+          index: idx,
+        };
+      });
+
+      // ✅ Test if Firebase URLs load
+      imagesToUse.forEach((img, idx) => {
+        if (
+          img.url.includes("firebasestorage") ||
+          img.url.includes("storage.googleapis.com")
+        ) {
+          const testImg = new Image();
+          testImg.onload = () =>
+            console.log(`✅ Firebase image ${idx} loads successfully`);
+          testImg.onerror = (e) => {
+            console.error(`❌ Firebase image ${idx} failed to load:`, e);
+            console.log(`🔗 Failed URL: ${img.url}`);
+          };
+          testImg.src = img.url;
+        }
+      });
     } else {
       // Use fallback images
       console.log("🖼️ Using fallback images for topic:", topic);
@@ -148,10 +183,18 @@ export function ImageGalleryGame({ topic, onGameComplete, images }: GameProps) {
                   className="rounded-lg w-80 h-48 object-cover border border-gray-300 shadow-lg"
                   onError={(e) => {
                     console.error(
-                      "Image failed to load:",
+                      "❌ Image failed to load:",
                       gameImages[currentIdx].url
                     );
-                    e.currentTarget.src = fallbackImageUrls[0];
+                    console.log("🔄 Trying fallback image...");
+                    e.currentTarget.src =
+                      fallbackImageUrls[currentIdx % fallbackImageUrls.length];
+                  }}
+                  onLoad={() => {
+                    console.log(
+                      "✅ Image loaded successfully:",
+                      gameImages[currentIdx].url.substring(0, 50)
+                    );
                   }}
                 />
                 {gameImages[currentIdx].prompt &&
@@ -225,7 +268,8 @@ export function ImageGalleryGame({ topic, onGameComplete, images }: GameProps) {
                   className="w-full h-full object-cover rounded"
                   draggable={false}
                   onError={(e) => {
-                    e.currentTarget.src = fallbackImageUrls[0];
+                    e.currentTarget.src =
+                      fallbackImageUrls[imgIdx % fallbackImageUrls.length];
                   }}
                 />
               </div>
