@@ -1,3 +1,4 @@
+  const navigateHome = () => window.location.href = '/';
 import { useMemo, useState, useRef, useEffect } from 'react'
 
 type Props = {
@@ -12,6 +13,9 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
   const [feedback, setFeedback] = useState<null | 'correct' | 'wrong'>(null)
   const [message, setMessage] = useState<string>('')
   const [isDrawing, setIsDrawing] = useState(false)
+  const [color, setColor] = useState('#000000')
+  const [brush, setBrush] = useState(3)
+  const [isEraser, setIsEraser] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const currentChar = word[index] || ''
@@ -188,6 +192,10 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
     const ctx = canvas.getContext('2d')
     if (ctx) {
       ctx.lineTo(x, y)
+      ctx.strokeStyle = isEraser ? '#ffffff' : color
+      ctx.lineWidth = brush
+      ctx.lineCap = 'round'
+      ctx.globalCompositeOperation = 'source-over'
       ctx.stroke()
     }
   }
@@ -249,10 +257,10 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     
-    ctx.strokeStyle = '#000000'
-    ctx.lineWidth = 3
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
+  ctx.strokeStyle = color
+  ctx.lineWidth = brush
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
   }, [])
 
   if (!word) {
@@ -264,19 +272,19 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-500 dark:text-gray-400">Character {index + 1} of {word.length}</div>
+  <div className="text-sm text-gray-500">Character {index + 1} of {word.length}</div>
         <div className="text-sm font-medium">Score: {score}</div>
       </div>
 
-      <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded">
+  <div className="h-2 bg-gray-200 rounded">
         <div className="h-2 bg-emerald-600 rounded" style={{ width: `${progress}%` }} />
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+  <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Draw the letter: <span className="text-4xl text-indigo-600">{currentChar}</span>
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+  <p className="text-sm text-gray-500">
           Use your mouse to draw the letter in the canvas below
         </p>
       </div>
@@ -290,12 +298,13 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
       )}
 
       <div className="flex justify-center">
-        <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-800">
+        <div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
           <canvas
             ref={canvasRef}
             width={300}
             height={200}
-            className="border border-gray-200 dark:border-gray-700 rounded cursor-crosshair"
+            className="border border-gray-200 rounded"
+            style={isEraser ? { cursor: `url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'${brush * 2}\' height=\'${brush * 2}\'><circle cx=\'${brush}\' cy=\'${brush}\' r=\'${brush}\' fill=\'white\' stroke=\'gray\' stroke-width=\'2\'/></svg>') ${brush} ${brush}, pointer` } : { cursor: 'crosshair' }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -305,6 +314,23 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
       </div>
 
       <div className="flex justify-center gap-4">
+        <div className="absolute top-6 right-6 z-50">
+          <button onClick={navigateHome} className="rounded bg-indigo-600 text-white px-4 py-2 shadow-lg hover:bg-indigo-700">Home</button>
+        </div>
+        <label className="text-sm">Color
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="ml-2 align-middle" disabled={isEraser} />
+        </label>
+        <label className="text-sm">{isEraser ? 'Eraser Size' : 'Brush'}
+          <input type="range" min={4} max={48} value={brush} onChange={(e) => setBrush(Number(e.target.value))} className="ml-2 align-middle" />
+          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{brush}px</span>
+        </label>
+        <button
+          type="button"
+          onClick={() => setIsEraser(e => !e)}
+          className={`rounded border px-3 py-1 text-sm ${isEraser ? 'bg-yellow-200' : ''} hover:bg-gray-50 dark:hover:bg-gray-900`}
+        >
+          {isEraser ? 'Eraser (On)' : 'Eraser'}
+        </button>
         <button
           onClick={clearCanvas}
           className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
@@ -326,7 +352,7 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
         </button>
       </div>
 
-      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+  <div className="text-center text-sm text-gray-500">
         <p>Draw the letter <strong>{currentChar}</strong> in the canvas above</p>
         <p>Click "Check Drawing" when you're done</p>
         <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-xs">
