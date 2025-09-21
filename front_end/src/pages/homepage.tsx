@@ -3,8 +3,11 @@ import { Dashboard } from "../components/Dashboard";
 import { DrawingCanvas } from "../components/DrawingCanvas";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { topics, celebrate, type Topic, type UserProfile } from "../App";
+import { topics, celebrate, type Topic } from "../App";
 import { useScore } from "../contexts/ScoreContext";
+import { useUser } from "../contexts/UserContext";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase";
 import TypeQuestGame from "../components/games/TypeQuestGame";
 import RhymeRoundupGame from "../components/games/RhymeRoundupGame";
 
@@ -16,8 +19,11 @@ function HomePage() {
   const bubbleId = useRef(0);
 
   const { score, addPoints } = useScore();
+  const { user, loading, setUser } = useUser();
   const [showTypeQuest, setShowTypeQuest] = useState(false);
   const [showRhymeRoundup, setShowRhymeRoundup] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const navigate = useNavigate();
 
   const bubblePopSound = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
@@ -58,6 +64,7 @@ function HomePage() {
       },
     ]);
     bubblePopSound.current?.play().catch(() => {});
+    addPoints(1);
   }
 
   useEffect(() => {
@@ -68,14 +75,62 @@ function HomePage() {
 
   const [selectedTopicIds] = useState<string[]>(["t1"]);
   const [runningTopicIds] = useState<string[]>(["t1"]);
-  const [user] = useState<UserProfile>({
-    name: "Alex Johnson",
-    age: 14,
-    disability: "Dyslexia",
-  });
-
   const [showCanvas, setShowCanvas] = useState(false);
-  const navigate = useNavigate();
+
+  // Sign out function
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      // Sign out from Firebase
+      await signOut(auth);
+
+      // Clear user context
+      setUser(null);
+
+      // Clear localStorage
+      localStorage.removeItem("currentUser");
+
+      // Navigate to login page
+      navigate("/loginpage");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Fallback - still clear everything and navigate
+      setUser(null);
+      localStorage.removeItem("currentUser");
+      navigate("/loginpage");
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
+  // Show loading if user data is still being fetched
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show default if no user data
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9]">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Please sign in to continue</p>
+          <button
+            onClick={() => navigate("/loginpage")}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const coveredCount = selectedTopicIds.length;
   const runningCount = runningTopicIds.length;
@@ -83,10 +138,6 @@ function HomePage() {
     coveredCount === 0
       ? 0
       : Math.round(((coveredCount - runningCount) / coveredCount) * 100);
-
-  function awardPoints(points: number) {
-    addPoints(points);
-  }
 
   function navigateToGame(topic: Topic) {
     navigate(`/game/${topic.id}`);
@@ -121,9 +172,54 @@ function HomePage() {
         />
       ))}
 
+      {/* Header with user info and sign out button */}
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-[#f1f5f9]/95 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="font-semibold text-gray-900">UST Learning</div>
+
+          {/* User info and sign out */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm text-gray-700 font-medium">
+                {user.name}
+              </span>
+            </div>
+
+            <div className="h-4 w-px bg-gray-300"></div>
+
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {signingOut ? (
+                <>
+                  <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Signing out...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  <span>Sign Out</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -137,6 +233,7 @@ function HomePage() {
           </aside>
 
           <section className="col-span-9 space-y-6">
+            {/* Use real user data from context */}
             <Dashboard
               user={user}
               coveredCount={coveredCount}
@@ -145,7 +242,7 @@ function HomePage() {
               score={score}
             />
 
-            {/* ✅ Games Section */}
+            {/* Games Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* TypeQuest Game Button */}
               <div
@@ -265,7 +362,7 @@ function HomePage() {
         </div>
       </main>
 
-      {/* ✅ TypeQuest Game Modal */}
+      {/* TypeQuest Game Modal */}
       {showTypeQuest && (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-2xl">
@@ -284,14 +381,14 @@ function HomePage() {
         </div>
       )}
 
-      {/* ✅ Rhyme Roundup Game Modal */}
+      {/* Rhyme Roundup Game Modal */}
       {showRhymeRoundup && (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[95vh] overflow-hidden shadow-2xl">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-auto shadow-2xl">
             <div className="flex justify-end p-4">
               <button
                 onClick={() => setShowRhymeRoundup(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
               >
                 ✕
               </button>

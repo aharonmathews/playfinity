@@ -4,24 +4,32 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./LoginPage";
 import { SignupPage } from "./SignupPage";
 import { UserInfoPage } from "./UserInfoPage";
-import { App } from "./App"; // your main game app
+import { App } from "./App";
+import { UserProvider } from "./contexts/UserContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Routes>
-        {/* Authentication flow */}
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/user-info" element={<UserInfoPage />} />
+      <UserProvider>
+        <Routes>
+          {/* Authentication routes */}
+          <Route path="/loginpage" element={<LoginPage />} />
+          <Route path="/createaccount" element={<SignupPage />} />
+          <Route path="/user-info" element={<UserInfoPage />} />
 
-        {/* Main app/game pages */}
-        <Route path="/app/*" element={<App />} />
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Protected app routes */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <App />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </UserProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
