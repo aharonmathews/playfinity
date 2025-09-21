@@ -14,7 +14,6 @@ interface AnalysisResult {
   analysis: any;
 }
 
-// Define game access based on disabilities
 const GAME_ACCESS = {
   ADHD: {
     allowedGames: ["imageReordering", "quiz"],
@@ -52,7 +51,7 @@ const GAME_ACCESS = {
   },
 };
 
-export function DrawingCanvas() {
+export function DrawingCanvas({ theme }: { theme: any }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#ef4444");
@@ -65,11 +64,29 @@ export function DrawingCanvas() {
   const navigate = useNavigate();
   const { user } = useUser();
 
-  // Get user's allowed games based on their disability
   const userGameAccess =
     user && user.disability
       ? GAME_ACCESS[user.disability] || GAME_ACCESS["None"]
       : GAME_ACCESS["None"];
+
+  // Color palette based on disability theme
+  const colorPalette = {
+    ADHD: ["#10B981", "#14B8A6", "#06B6D4", "#3B82F6", "#EF4444", "#F59E0B"],
+    Dyslexia: [
+      "#3B82F6",
+      "#6366F1",
+      "#8B5CF6",
+      "#A855F7",
+      "#EC4899",
+      "#F59E0B",
+    ],
+    Visual: ["#000000", "#FFFFFF", "#F59E0B", "#EAB308", "#DC2626", "#059669"],
+    Autism: ["#64748B", "#475569", "#334155", "#1E293B", "#0F172A", "#374151"],
+    None: ["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#EC4899"],
+    Other: ["#8B5CF6", "#A855F7", "#C084FC", "#DDD6FE", "#EC4899", "#F472B6"],
+  };
+
+  const themeColors = colorPalette[user?.disability || "None"];
 
   function fillWhiteBackground(
     ctx: CanvasRenderingContext2D,
@@ -171,7 +188,6 @@ export function DrawingCanvas() {
         const formData = new FormData();
         formData.append("file", blob, "drawing.png");
 
-        console.log("🔍 Sending image to backend for analysis...");
         const res = await fetch("http://127.0.0.1:8000/predict", {
           method: "POST",
           body: formData,
@@ -182,10 +198,8 @@ export function DrawingCanvas() {
         }
 
         const data: AnalysisResult = await res.json();
-        console.log("✅ Analysis result:", data);
         setResult(data);
       } catch (err) {
-        console.error("❌ Error submitting image:", err);
         setResult({
           success: false,
           tags: [],
@@ -200,18 +214,11 @@ export function DrawingCanvas() {
     }, "image/png");
   }
 
-  // Unified function for handling topic clicks with disability filtering
   const handleTagClick = async (tagName: string) => {
-    console.log(`🎯 Topic selected: ${tagName}`);
-    console.log(`👤 User: ${user?.name} (${user?.disability || "None"})`);
-    console.log(`🎮 Allowed games:`, userGameAccess.allowedGames);
-
     setSelectedTag(tagName);
     setGeneratingGames(true);
 
     try {
-      // Step 1: Check if topic exists in Firebase
-      console.log(`🔍 Validating topic: ${tagName}`);
       const validateResponse = await fetch(
         "http://127.0.0.1:8000/validate-topic",
         {
@@ -231,12 +238,9 @@ export function DrawingCanvas() {
       }
 
       const validation = await validateResponse.json();
-      console.log("📋 Validation result:", validation);
 
       if (validation.success) {
         if (validation.games_exist) {
-          // Games exist in Firebase, use them directly
-          console.log("✅ Using existing games from Firebase");
           navigate("/custom-games", {
             state: {
               topic: tagName,
@@ -249,8 +253,6 @@ export function DrawingCanvas() {
             },
           });
         } else {
-          // Games don't exist, generate new ones
-          console.log("🎨 Generating new games and images...");
           const generateResponse = await fetch(
             "http://127.0.0.1:8000/generate-games",
             {
@@ -270,7 +272,6 @@ export function DrawingCanvas() {
           }
 
           const gameResult = await generateResponse.json();
-          console.log("🎮 Generation result:", gameResult);
 
           if (gameResult.success) {
             navigate("/custom-games", {
@@ -292,7 +293,6 @@ export function DrawingCanvas() {
         throw new Error(validation.error || "Topic validation failed");
       }
     } catch (error) {
-      console.error("❌ Error handling topic:", error);
       alert(
         `Failed to load games for "${tagName}". Error: ${error.message}. Please make sure the backend is running.`
       );
@@ -302,156 +302,427 @@ export function DrawingCanvas() {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
-      {/* User disability info display */}
+    <div
+      className={`rounded-3xl ${theme.border} border ${theme.cardBg} ${theme.shadow}`}
+    >
+      {/* ✅ Enhanced User Profile Display */}
       {user && (
-        <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-blue-600">🎯</span>
-            <span className="font-medium text-blue-900">Learning Profile:</span>
-            <span className="text-blue-700">
-              {user.disability || "General"}
-            </span>
-            <span className="text-blue-600">•</span>
-            <span className="text-blue-600 text-xs">
-              {userGameAccess.restrictedMessage}
-            </span>
+        <div
+          className={`m-6 mb-4 p-4 bg-gradient-to-r from-${theme.primary}-100 to-${theme.secondary}-100 rounded-2xl ${theme.border} border`}
+        >
+          <div className={`flex items-center gap-3 ${theme.fontSize}`}>
+            <span className="text-2xl">🎯</span>
+            <div>
+              <span className={`font-bold ${theme.textPrimary}`}>
+                Learning Profile:
+              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <span
+                  className={`px-3 py-1 bg-${theme.primary}-200 ${theme.textPrimary} rounded-full text-sm font-semibold`}
+                >
+                  {user.disability || "General"}
+                </span>
+                <span className={`${theme.textSecondary} text-sm`}>
+                  {userGameAccess.restrictedMessage}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <label className="text-sm">
-          Color
+      {/* ✅ Enhanced Drawing Controls */}
+      <div
+        className={`flex flex-wrap items-center gap-6 mx-6 mb-6 ${theme.fontSize}`}
+      >
+        <div className="flex items-center gap-3">
+          <label
+            className={`font-semibold ${theme.textPrimary} flex items-center gap-2`}
+          >
+            <span className="text-xl">🎨</span>
+            Color:
+          </label>
           <input
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="ml-2 align-middle"
+            className={`w-12 h-12 rounded-xl border-2 ${theme.border} cursor-pointer ${theme.focusRing}`}
           />
-        </label>
-        <label className="text-sm">
-          Brush
+        </div>
+
+        {/* ✅ Theme Color Palette */}
+        <div className="flex items-center gap-2">
+          <span className={`text-sm ${theme.textMuted} font-medium`}>
+            Quick colors:
+          </span>
+          <div className="flex gap-2">
+            {themeColors.map((themeColor, index) => (
+              <button
+                key={index}
+                onClick={() => setColor(themeColor)}
+                className={`w-8 h-8 rounded-lg border-2 ${
+                  color === themeColor
+                    ? "ring-4 ring-offset-2"
+                    : "hover:scale-110"
+                } ${theme.animations} ${theme.focusRing}`}
+                style={{ backgroundColor: themeColor }}
+                title={`Color ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label
+            className={`font-semibold ${theme.textPrimary} flex items-center gap-2`}
+          >
+            <span className="text-xl">🖌️</span>
+            Brush:
+          </label>
           <input
             type="range"
             min={1}
-            max={24}
+            max={user?.disability === "Visual" ? 32 : 24}
             value={brush}
             onChange={(e) => setBrush(Number(e.target.value))}
-            className="ml-2 align-middle"
+            className={`w-24 ${theme.focusRing}`}
           />
-          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+          <span
+            className={`${theme.textMuted} text-sm font-mono bg-${theme.primary}-50 px-2 py-1 rounded-lg`}
+          >
             {brush}px
           </span>
-        </label>
-        <button
-          type="button"
-          onClick={clearCanvas}
-          className="ml-auto rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900"
+        </div>
+
+        <div className="flex gap-3 ml-auto">
+          <button
+            type="button"
+            onClick={clearCanvas}
+            className={`px-6 py-3 rounded-2xl ${theme.border} border ${theme.textSecondary} hover:${theme.textPrimary} hover:bg-red-50 ${theme.animations} ${theme.focusRing} flex items-center gap-2 font-semibold`}
+          >
+            <span className="text-lg">🗑️</span>
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className={`${theme.button} text-white px-8 py-3 rounded-2xl ${theme.animations} disabled:opacity-50 ${theme.focusRing} flex items-center gap-2 font-bold ${theme.shadow} hover:shadow-lg`}
+          >
+            <span className="text-lg">{loading ? "🔍" : "✨"}</span>
+            {loading ? "Analyzing..." : "Analyze Drawing"}
+          </button>
+        </div>
+      </div>
+
+      {/* ✅ Enhanced Canvas */}
+      <div className="mx-6 mb-6">
+        <div
+          className={`h-[60vh] sm:h-[70vh] rounded-2xl overflow-hidden ${theme.shadow} ring-1 ring-gray-200`}
         >
-          Clear
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading}
-          className="rounded border px-3 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50"
+          <canvas
+            ref={canvasRef}
+            className="h-full w-full bg-white touch-none cursor-crosshair"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+            onContextMenu={(e) => e.preventDefault()}
+            onPointerCancel={handlePointerUp}
+            style={{
+              backgroundImage:
+                user?.disability === "Visual"
+                  ? "radial-gradient(circle at 1px 1px, rgba(0,0,0,0.15) 1px, transparent 0)"
+                  : "radial-gradient(circle at 1px 1px, rgba(0,0,0,0.05) 1px, transparent 0)",
+              backgroundSize: "20px 20px",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* ✅ Enhanced Status and Loading */}
+      <div className="mx-6 mb-4">
+        <div
+          className={`flex items-center justify-between p-4 bg-${theme.primary}-50 rounded-2xl ${theme.border} border`}
         >
-          {loading ? "Analyzing..." : "Analyze Drawing"}
-        </button>
-      </div>
-
-      <div className="h-[60vh] sm:h-[70vh]">
-        <canvas
-          ref={canvasRef}
-          className="h-full w-full rounded-md bg-white touch-none"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-          onContextMenu={(e) => e.preventDefault()}
-          onPointerCancel={handlePointerUp}
-        />
-      </div>
-
-      {/* Connection status indicator */}
-      <div className="mt-2 text-xs text-gray-500">
-        Backend Status:
-        <span className="ml-1 px-2 py-1 rounded text-white text-xs bg-green-500">
-          {loading || generatingGames ? "🟢 Connected" : "⚪ Ready"}
-        </span>
-      </div>
-
-      {/* Loading state for game generation */}
-      {generatingGames && (
-        <div className="mt-3 p-3 rounded bg-yellow-100 border border-yellow-300">
-          <div className="flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-2"></div>
-            <span className="text-yellow-800 text-sm font-medium">
-              🎮{" "}
-              {selectedTag
-                ? `Processing "${selectedTag}" for ${
-                    user?.disability || "general"
-                  } learning...`
-                : "Loading games..."}
+          <div className="flex items-center gap-3">
+            <span className="text-center gap-3"></span>
+            <span className="text-xl">🔌</span>
+            <span className={`text-sm font-semibold ${theme.textPrimary}`}>
+              Backend Status:
+            </span>
+            <span
+              className={`text-xs px-3 py-1 rounded-full font-medium ${
+                loading || generatingGames
+                  ? "bg-green-200 text-green-800"
+                  : "bg-gray-200 text-gray-700"
+              }`}
+            >
+              {loading || generatingGames ? "🟢 Connected" : "⚪ Ready"}
             </span>
           </div>
-          <p className="text-xs text-yellow-700 mt-1">
-            Generating games optimized for your learning profile...
-          </p>
+
+          {(loading || generatingGames) && (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+              <span className={`text-sm ${theme.textSecondary}`}>
+                {loading ? "Analyzing drawing..." : "Generating games..."}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ✅ Enhanced Game Generation Loading */}
+      {generatingGames && (
+        <div className="mx-6 mb-6">
+          <div
+            className={`p-6 rounded-2xl bg-gradient-to-r from-${theme.primary}-100 to-${theme.secondary}-100 ${theme.border} border`}
+          >
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-12 h-12 border-4 border-current border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xl">🎮</span>
+                </div>
+              </div>
+              <div>
+                <h4 className={`text-lg font-bold ${theme.textPrimary} mb-1`}>
+                  {selectedTag
+                    ? `Creating "${selectedTag}" Games`
+                    : "Processing Your Drawing"}
+                </h4>
+                <p className={`${theme.textSecondary} text-sm`}>
+                  Generating personalized learning games optimized for{" "}
+                  {user?.disability || "your"} learning profile...
+                </p>
+                <div className={`flex items-center gap-2 mt-2`}>
+                  <div
+                    className={`w-2 h-2 bg-${theme.primary}-400 rounded-full animate-pulse`}
+                  ></div>
+                  <div
+                    className={`w-2 h-2 bg-${theme.primary}-400 rounded-full animate-pulse`}
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                  <div
+                    className={`w-2 h-2 bg-${theme.primary}-400 rounded-full animate-pulse`}
+                    style={{ animationDelay: "0.4s" }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
+      {/* ✅ Enhanced Results Display */}
       {result && !generatingGames && (
-        <div className="mt-3 p-3 rounded bg-gray-100 dark:bg-gray-900">
-          {result.success ? (
-            <div>
-              <h4 className="font-semibold text-green-600 mb-2">
-                ✅ Analysis Results:
-              </h4>
-
-              {result.description && (
-                <div className="mb-3">
-                  <strong>Description:</strong>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                    {result.description}
-                  </p>
-                </div>
-              )}
-
-              {result.tags && result.tags.length > 0 && (
-                <div>
-                  <strong>
-                    Click on a topic to generate educational games:
-                  </strong>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {result.tags.map((tag, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleTagClick(tag.name)}
-                        disabled={generatingGames}
-                        className={`px-3 py-2 text-white rounded text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
-                          selectedTag === tag.name
-                            ? "bg-purple-600 hover:bg-purple-700"
-                            : "bg-blue-500 hover:bg-blue-600"
-                        } ${generatingGames ? "bg-blue-300" : ""}`}
-                      >
-                        🎮 {tag.name} ({tag.confidence}%)
-                      </button>
-                    ))}
+        <div className="mx-6 mb-6">
+          <div
+            className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.border} border`}
+          >
+            {result.success ? (
+              <div className={`${theme.cardBg}`}>
+                {/* Success Header */}
+                <div
+                  className={`p-6 bg-gradient-to-r from-green-100 to-emerald-100 ${theme.border} border-b`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">✨</span>
+                    <div>
+                      <h4 className="text-lg font-bold text-green-800">
+                        Analysis Complete!
+                      </h4>
+                      <p className="text-sm text-green-700">
+                        We've identified learning opportunities from your
+                        drawing
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    💡 Games will be customized for your{" "}
-                    {user?.disability || "general"} learning profile
-                  </p>
                 </div>
-              )}
+
+                <div className="p-6 space-y-6">
+                  {/* Description */}
+                  {result.description && (
+                    <div>
+                      <h5
+                        className={`font-semibold ${theme.textPrimary} mb-2 flex items-center gap-2`}
+                      >
+                        <span className="text-lg">📝</span>
+                        What We See:
+                      </h5>
+                      <p
+                        className={`${theme.textSecondary} leading-relaxed bg-${theme.primary}-50 p-4 rounded-xl`}
+                      >
+                        {result.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Learning Topics */}
+                  {result.tags && result.tags.length > 0 && (
+                    <div>
+                      <h5
+                        className={`font-semibold ${theme.textPrimary} mb-4 flex items-center gap-2`}
+                      >
+                        <span className="text-lg">🎯</span>
+                        Learning Topics Available:
+                        <span
+                          className={`text-sm ${theme.textMuted} bg-${theme.primary}-100 px-3 py-1 rounded-full`}
+                        >
+                          Optimized for {user?.disability || "general"} learning
+                        </span>
+                      </h5>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {result.tags.map((tag, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleTagClick(tag.name)}
+                            disabled={generatingGames}
+                            className={`group relative overflow-hidden rounded-2xl p-6 text-left ${
+                              theme.animations
+                            } ${
+                              theme.shadow
+                            } hover:shadow-lg transform hover:scale-105 ${
+                              selectedTag === tag.name
+                                ? `bg-gradient-to-r from-${theme.primary}-600 to-${theme.secondary}-600 text-white`
+                                : `${theme.cardBg} hover:bg-gradient-to-r hover:from-${theme.primary}-50 hover:to-${theme.secondary}-50`
+                            } ${
+                              generatingGames
+                                ? "cursor-not-allowed opacity-50"
+                                : "cursor-pointer"
+                            }`}
+                          >
+                            <div className="relative z-10">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-2xl group-hover:animate-bounce">
+                                  🎮
+                                </span>
+                                <span
+                                  className={`text-xs px-2 py-1 rounded-full ${
+                                    selectedTag === tag.name
+                                      ? "bg-white/20"
+                                      : `bg-${theme.primary}-200 ${theme.textPrimary}`
+                                  }`}
+                                >
+                                  {tag.confidence}% match
+                                </span>
+                              </div>
+                              <h6 className="text-lg font-bold mb-2 capitalize">
+                                {tag.name}
+                              </h6>
+                              <p
+                                className={`text-sm ${
+                                  selectedTag === tag.name
+                                    ? "text-white/80"
+                                    : theme.textSecondary
+                                } mb-3`}
+                              >
+                                Click to generate educational games about{" "}
+                                {tag.name}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium opacity-75">
+                                  {userGameAccess.allowedGames.length} game
+                                  types available
+                                </span>
+                                <span className="text-lg ml-auto group-hover:translate-x-1 transition-transform">
+                                  →
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Hover effect overlay */}
+                            <div
+                              className={`absolute inset-0 bg-gradient-to-r from-${theme.primary}-500/10 to-${theme.secondary}-500/10 opacity-0 group-hover:opacity-100 ${theme.animations}`}
+                            ></div>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div
+                        className={`mt-4 p-4 bg-${theme.primary}-50 rounded-xl ${theme.border} border`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">💡</span>
+                          <p className={`text-sm ${theme.textSecondary}`}>
+                            <strong>Personalized Learning:</strong> Games will
+                            be customized for your{" "}
+                            {user?.disability || "general"} learning profile
+                            with appropriate difficulty levels and teaching
+                            methods.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Error State */
+              <div className={`${theme.cardBg} p-6`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">❌</span>
+                  <div>
+                    <h4 className="text-lg font-bold text-red-600">
+                      Analysis Failed
+                    </h4>
+                    <p className="text-sm text-red-500">
+                      We couldn't process your drawing
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-red-700 text-sm leading-relaxed">
+                    <strong>Error:</strong> {result.description}
+                  </p>
+                  <div className="mt-3 text-xs text-red-600">
+                    💡 <strong>Troubleshooting:</strong> Make sure you've drawn
+                    something clear and the backend server is running on
+                    http://127.0.0.1:8000
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Enhanced Instructions */}
+      {!result && !loading && !generatingGames && (
+        <div className="mx-6 mb-6">
+          <div
+            className={`p-6 bg-gradient-to-r from-${theme.primary}-50 to-${theme.secondary}-50 rounded-2xl ${theme.border} border`}
+          >
+            <div className="text-center">
+              <span className="text-4xl mb-4 block">🎨</span>
+              <h4 className={`text-xl font-bold ${theme.textPrimary} mb-2`}>
+                Ready to Create & Learn?
+              </h4>
+              <p className={`${theme.textSecondary} mb-4 leading-relaxed`}>
+                Draw anything you'd like to learn about! Our AI will analyze
+                your drawing and create personalized learning games tailored for
+                your {user?.disability || "unique"} learning style.
+              </p>
+              <div
+                className={`grid grid-cols-1 md:grid-cols-3 gap-4 text-sm ${theme.textSecondary}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">✏️</span>
+                  <span>Draw your idea</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🔍</span>
+                  <span>AI analyzes it</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🎮</span>
+                  <span>Play & learn</span>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="text-red-600">
-              <strong>❌ Error:</strong> {result.description}
-            </div>
-          )}
+          </div>
         </div>
       )}
     </div>

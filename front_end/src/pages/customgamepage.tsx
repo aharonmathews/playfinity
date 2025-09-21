@@ -1,4 +1,4 @@
-import React from "react"; // ✅ Add this import
+import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { SpellingGame } from "../components/games/SpellingGame";
@@ -9,7 +9,7 @@ import { useScore } from "../contexts/ScoreContext";
 import { useUser } from "../contexts/UserContext";
 import { celebrate } from "../App";
 
-// ✅ Define game access restrictions
+// Game access restrictions
 const GAME_ACCESS = {
   ADHD: {
     allowedGames: ["imageReordering", "quiz"],
@@ -47,7 +47,6 @@ const GAME_ACCESS = {
   },
 };
 
-// ✅ Map game phases to game types
 const GAME_PHASE_TO_TYPE = {
   spelling: "spelling",
   drawing: "drawing",
@@ -55,7 +54,7 @@ const GAME_PHASE_TO_TYPE = {
   gk: "quiz",
 };
 
-// ... rest of your interfaces remain the same ...
+// ... existing interfaces ...
 interface NewGameData {
   spelling: { word: string; instructions: string };
   drawing: { word: string; instructions: string };
@@ -109,20 +108,116 @@ function CustomGamePage() {
   const { addPoints } = useScore();
   const { user } = useUser();
 
-  // ✅ Get user's allowed games
   const userGameAccess =
     user && user.disability
       ? GAME_ACCESS[user.disability] || GAME_ACCESS["None"]
       : GAME_ACCESS["None"];
 
-  // ✅ Function to check if a game phase is allowed
+  // Theme configuration based on user disability
+  const getTheme = () => {
+    const baseTheme = {
+      animations: "transition-all duration-300",
+      focusRing: "focus:ring-4 focus:outline-none",
+      shadow: "shadow-xl",
+    };
+
+    switch (user?.disability) {
+      case "ADHD":
+        return {
+          ...baseTheme,
+          primary: "emerald",
+          secondary: "teal",
+          bg: "bg-gradient-to-br from-emerald-50 via-white to-teal-50",
+          cardBg: "bg-white/90 backdrop-blur-sm",
+          headerBg: "bg-emerald-50/95",
+          textPrimary: "text-emerald-900",
+          textSecondary: "text-emerald-700",
+          textMuted: "text-emerald-600",
+          button:
+            "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700",
+          border: "border-emerald-200",
+          fontSize: "text-lg",
+          focusRing: "focus:ring-emerald-500 focus:ring-4 focus:outline-none",
+        };
+      case "Dyslexia":
+        return {
+          ...baseTheme,
+          primary: "blue",
+          secondary: "indigo",
+          bg: "bg-gradient-to-br from-blue-50 via-white to-indigo-50",
+          cardBg: "bg-white/90 backdrop-blur-sm",
+          headerBg: "bg-blue-50/95",
+          textPrimary: "text-blue-900",
+          textSecondary: "text-blue-700",
+          textMuted: "text-blue-600",
+          button:
+            "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700",
+          border: "border-blue-200",
+          fontSize: "text-xl",
+          focusRing: "focus:ring-blue-500 focus:ring-4 focus:outline-none",
+        };
+      case "Visual":
+        return {
+          ...baseTheme,
+          primary: "amber",
+          secondary: "orange",
+          bg: "bg-gradient-to-br from-amber-50 via-white to-orange-50",
+          cardBg: "bg-white/95 backdrop-blur-sm",
+          headerBg: "bg-amber-50/95",
+          textPrimary: "text-gray-900",
+          textSecondary: "text-gray-800",
+          textMuted: "text-gray-700",
+          button:
+            "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700",
+          border: "border-amber-300",
+          fontSize: "text-2xl",
+          focusRing: "focus:ring-amber-500 focus:ring-6 focus:outline-none",
+        };
+      case "Autism":
+        return {
+          ...baseTheme,
+          primary: "slate",
+          secondary: "gray",
+          bg: "bg-gradient-to-br from-slate-50 via-white to-gray-50",
+          cardBg: "bg-white/95 backdrop-blur-sm",
+          headerBg: "bg-slate-50/95",
+          textPrimary: "text-slate-900",
+          textSecondary: "text-slate-700",
+          textMuted: "text-slate-600",
+          button:
+            "bg-gradient-to-r from-slate-600 to-gray-600 hover:from-slate-700 hover:to-gray-700",
+          border: "border-slate-300",
+          fontSize: "text-lg",
+          focusRing: "focus:ring-slate-500 focus:ring-4 focus:outline-none",
+        };
+      default:
+        return {
+          ...baseTheme,
+          primary: "violet",
+          secondary: "purple",
+          bg: "bg-gradient-to-br from-violet-50 via-white to-purple-50",
+          cardBg: "bg-white/90 backdrop-blur-sm",
+          headerBg: "bg-violet-50/95",
+          textPrimary: "text-violet-900",
+          textSecondary: "text-violet-700",
+          textMuted: "text-violet-600",
+          button:
+            "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700",
+          border: "border-violet-200",
+          fontSize: "text-lg",
+          focusRing: "focus:ring-violet-500 focus:ring-4 focus:outline-none",
+        };
+    }
+  };
+
+  const theme = getTheme();
+
   const isGamePhaseAllowed = (phase: string): boolean => {
     const gameType =
       GAME_PHASE_TO_TYPE[phase as keyof typeof GAME_PHASE_TO_TYPE];
     return userGameAccess.allowedGames.includes(gameType);
   };
 
-  // ✅ Get allowed game phases in order
   const getAllowedGamePhases = (): string[] => {
     const allPhases = ["spelling", "drawing", "gallery", "gk"];
     return allPhases.filter((phase) => isGamePhaseAllowed(phase));
@@ -130,12 +225,10 @@ function CustomGamePage() {
 
   const allowedPhases = getAllowedGamePhases();
 
-  // ✅ Start with the first allowed game phase
   const [gamePhase, setGamePhase] = useState<
     "spelling" | "drawing" | "gallery" | "gk" | "completed"
   >((allowedPhases[0] as any) || "completed");
 
-  // ✅ Extract ALL data from navigation state
   const locationState = location.state || {};
   const {
     topic,
@@ -145,31 +238,9 @@ function CustomGamePage() {
     userDisability,
     allowedGames,
     disabilityMessage,
-  }: {
-    topic: string;
-    gameData: NewGameData | OldGameData | string;
-    images: ImageData | Array<any> | null;
-    source?: string;
-    userDisability?: string;
-    allowedGames?: string[];
-    disabilityMessage?: string;
   } = locationState;
 
-  // ✅ Debug log
-  console.log("🎮 CustomGamePage received:", {
-    topic,
-    gameData: typeof gameData,
-    images: Array.isArray(images)
-      ? `Array with ${images.length} items`
-      : images?.success
-      ? `Success with ${images.images?.length || 0} images`
-      : "null",
-    source,
-    userDisability: userDisability || user?.disability,
-    allowedPhases: allowedPhases.join(", "),
-  });
-
-  // ... existing game data normalization code remains the same ...
+  // ... existing data normalization code (keeping the same logic) ...
   const normalizeGameData = (data: any): NewGameData | null => {
     if (!data) return null;
 
@@ -211,7 +282,6 @@ function CustomGamePage() {
   let parsedGameData: NewGameData | null = null;
 
   if (typeof gameData === "string") {
-    console.log("🔧 gameData is string, attempting to parse...");
     try {
       const jsonMatch = gameData.match(/```(?:json)?\s*(\{.*\})\s*```/s);
       if (jsonMatch) {
@@ -230,7 +300,6 @@ function CustomGamePage() {
   }
 
   if (!parsedGameData) {
-    console.log("🔧 Creating fallback game data");
     parsedGameData = {
       spelling: {
         word: topic?.toUpperCase().slice(0, 8) || "HEART",
@@ -257,29 +326,10 @@ function CustomGamePage() {
     };
   }
 
-  // ... existing image normalization code remains the same ...
+  // ... existing image normalization code (keeping the same logic) ...
   const normalizedImages = (() => {
-    console.log("🔍 DEBUG: Processing images:");
-    console.log("- images:", images);
-    console.log("- images type:", typeof images);
-    console.log("- images is array:", Array.isArray(images));
-    console.log(
-      "- parsedGameData?.gallery?.images:",
-      parsedGameData?.gallery?.images
-    );
-
     if (Array.isArray(images) && images.length > 0) {
-      console.log("📦 Processing array of images from Firebase Storage");
       return images.map((img, idx) => {
-        console.log(`🔍 Image ${idx}:`, {
-          has_url: !!img.url,
-          url_preview: img.url?.substring(0, 50) + "...",
-          prompt: img.prompt,
-          is_firebase_storage: img.url?.includes(
-            "firebasestorage.googleapis.com"
-          ),
-        });
-
         let imageUrl = img.url;
         if (!imageUrl && img.image_base64) {
           imageUrl = img.image_base64.startsWith("data:")
@@ -288,7 +338,6 @@ function CustomGamePage() {
         }
 
         if (!imageUrl) {
-          console.log(`❌ No image data found for image ${idx}`);
           imageUrl = `data:image/svg+xml;base64,${btoa(
             '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#f0f0f0"/><text x="200" y="200" text-anchor="middle" fill="#666">Image Loading...</text></svg>'
           )}`;
@@ -307,11 +356,7 @@ function CustomGamePage() {
       parsedGameData?.gallery?.images &&
       Array.isArray(parsedGameData.gallery.images)
     ) {
-      console.log("📦 Processing gallery.images from Firebase Storage");
       return parsedGameData.gallery.images.map((img, idx) => {
-        console.log(
-          `🖼️ Gallery Image ${idx}: URL=${img.url?.substring(0, 50)}...`
-        );
         let imageUrl = img.url;
         if (!imageUrl && img.image_base64) {
           imageUrl = img.image_base64.startsWith("data:")
@@ -333,7 +378,6 @@ function CustomGamePage() {
     }
 
     if (images?.success && images.images) {
-      console.log("📦 Processing generation result images");
       return images.images.map((img, idx) => ({
         url: `data:image/png;base64,${img.image_base64}`,
         prompt: img.prompt || `Image ${idx + 1}`,
@@ -342,18 +386,8 @@ function CustomGamePage() {
       }));
     }
 
-    console.log("❌ No valid image format found, returning null");
     return null;
   })();
-
-  console.log("🔍 Final normalizedImages:", normalizedImages);
-  if (normalizedImages && normalizedImages.length > 0) {
-    console.log("🔍 First image URL:", normalizedImages[0].url);
-    console.log(
-      "🔍 Is Firebase Storage URL:",
-      normalizedImages[0].url?.includes("firebasestorage.googleapis.com")
-    );
-  }
 
   if (normalizedImages && parsedGameData) {
     parsedGameData.gallery.images = normalizedImages;
@@ -361,12 +395,10 @@ function CustomGamePage() {
 
   const finalGameData = parsedGameData;
 
-  // ✅ Updated game completion handlers
   const handleGameComplete = (currentPhase: string) => {
     const currentIndex = allowedPhases.indexOf(currentPhase);
     const nextIndex = currentIndex + 1;
 
-    // Award points based on game type
     const points =
       {
         spelling: 10,
@@ -378,10 +410,8 @@ function CustomGamePage() {
     addPoints(points);
 
     if (nextIndex < allowedPhases.length) {
-      // Move to next allowed game
       setGamePhase(allowedPhases[nextIndex] as any);
     } else {
-      // All allowed games completed
       setGamePhase("completed");
     }
   };
@@ -391,11 +421,22 @@ function CustomGamePage() {
   const handleGalleryComplete = () => handleGameComplete("gallery");
   const handleGKComplete = () => handleGameComplete("gk");
 
-  // ✅ Updated progress indicator
   const getGameProgress = () => {
     const currentIndex = allowedPhases.indexOf(gamePhase);
     return allowedPhases.map((phase, index) => ({
       phase,
+      icon: {
+        spelling: "🔤",
+        drawing: "🎨",
+        gallery: "🖼️",
+        gk: "🧠",
+      }[phase],
+      name: {
+        spelling: "Spelling",
+        drawing: "Drawing",
+        gallery: "Gallery",
+        gk: "Quiz",
+      }[phase],
       status:
         index < currentIndex
           ? "completed"
@@ -405,32 +446,69 @@ function CustomGamePage() {
     }));
   };
 
-  // Redirect if no data
   useEffect(() => {
     if (!topic || !finalGameData) {
-      console.log("⚠️ Missing data, redirecting to home");
       navigate("/");
     }
   }, [topic, finalGameData, navigate]);
 
-  // ✅ Show message if no games are available
+  const getCurrentGameTitle = () => {
+    const titles = {
+      spelling: "Spelling Challenge",
+      drawing: "Creative Drawing",
+      gallery: "Image Discovery",
+      gk: "Knowledge Quiz",
+      completed: "Mission Complete!",
+    };
+    return titles[gamePhase] || "Learning Game";
+  };
+
+  const getCurrentGameDescription = () => {
+    const descriptions = {
+      spelling:
+        finalGameData?.spelling?.instructions ||
+        `Master spelling for "${topic}"`,
+      drawing:
+        finalGameData?.drawing?.instructions ||
+        `Express creativity through drawing`,
+      gallery:
+        finalGameData?.gallery?.instructions ||
+        `Explore visual learning materials`,
+      gk:
+        finalGameData?.quiz?.instructions ||
+        `Test your knowledge about "${topic}"`,
+      completed: `Congratulations! You've mastered "${topic}"!`,
+    };
+    return descriptions[gamePhase] || "";
+  };
+
   if (allowedPhases.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9] text-gray-900">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold mb-4">No Games Available</h1>
-          <p className="text-gray-600 mb-4">
-            No games are currently available for your learning profile (
-            {user?.disability || "General"}).
+      <div
+        className={`min-h-screen flex items-center justify-center ${theme.bg} ${theme.textPrimary}`}
+      >
+        <div
+          className={`text-center max-w-lg mx-auto p-12 ${theme.cardBg} rounded-3xl ${theme.shadow} ${theme.border} border`}
+        >
+          <div className="text-6xl mb-6">🚫</div>
+          <h1 className={`text-3xl font-bold mb-4 ${theme.textPrimary}`}>
+            No Games Available
+          </h1>
+          <p className={`${theme.textSecondary} mb-6 ${theme.fontSize}`}>
+            No games are currently available for your{" "}
+            <strong>{user?.disability || "General"}</strong> learning profile.
           </p>
-          <p className="text-sm text-gray-500 mb-6">
-            {userGameAccess.restrictedMessage}
-          </p>
+          <div className={`bg-${theme.primary}-100 rounded-2xl p-4 mb-6`}>
+            <p className={`text-sm ${theme.textSecondary}`}>
+              <strong>Learning Profile:</strong>{" "}
+              {userGameAccess.restrictedMessage}
+            </p>
+          </div>
           <button
             onClick={() => navigate("/")}
-            className="rounded-md bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-500"
+            className={`${theme.button} text-white px-8 py-4 rounded-2xl font-bold ${theme.animations} ${theme.focusRing} ${theme.shadow}`}
           >
-            Back to Home
+            🏠 Return to Home
           </button>
         </div>
       </div>
@@ -439,17 +517,24 @@ function CustomGamePage() {
 
   if (!topic || !finalGameData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9] text-gray-900">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">No game data found</h1>
-          <p className="text-gray-600 mb-4">
+      <div
+        className={`min-h-screen flex items-center justify-center ${theme.bg} ${theme.textPrimary}`}
+      >
+        <div
+          className={`text-center max-w-lg mx-auto p-12 ${theme.cardBg} rounded-3xl ${theme.shadow} ${theme.border} border`}
+        >
+          <div className="text-6xl mb-6">❌</div>
+          <h1 className={`text-3xl font-bold mb-4 ${theme.textPrimary}`}>
+            No Game Data Found
+          </h1>
+          <p className={`${theme.textSecondary} mb-6 ${theme.fontSize}`}>
             Please draw something first to generate custom games.
           </p>
           <button
             onClick={() => navigate("/")}
-            className="rounded-md bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-500"
+            className={`${theme.button} text-white px-8 py-4 rounded-2xl font-bold ${theme.animations} ${theme.focusRing} ${theme.shadow}`}
           >
-            Back to Home
+            🎨 Start Drawing
           </button>
         </div>
       </div>
@@ -460,157 +545,169 @@ function CustomGamePage() {
     if (gamePhase !== "spelling" && gamePhase !== "completed") celebrate();
   }, [gamePhase]);
 
-  const getCurrentGameTitle = () => {
-    switch (gamePhase) {
-      case "spelling":
-        return "Spelling Game";
-      case "drawing":
-        return "Drawing Game";
-      case "gallery":
-        return "Image Gallery";
-      case "gk":
-        return "Quiz Time";
-      case "completed":
-        return "All Games Completed!";
-      default:
-        return "Loading...";
-    }
-  };
-
-  const getCurrentGameDescription = () => {
-    switch (gamePhase) {
-      case "spelling":
-        return (
-          finalGameData?.spelling?.instructions ||
-          `Spell the word related to "${topic}"`
-        );
-      case "drawing":
-        return (
-          finalGameData?.drawing?.instructions || `Draw each letter of the word`
-        );
-      case "gallery":
-        return (
-          finalGameData?.gallery?.instructions ||
-          `Explore images related to "${topic}"`
-        );
-      case "gk":
-        return (
-          finalGameData?.quiz?.instructions ||
-          `Answer questions about "${topic}"`
-        );
-      case "completed":
-        return `Congratulations! You mastered "${topic}"!`;
-      default:
-        return "";
-    }
-  };
-
   return (
-    <div className="min-h-full bg-[#f8fafc] text-gray-900">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-[#f1f5f9]/95 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="font-semibold text-gray-900">
-            UST Learning - Custom Topic
+    <div className={`min-h-screen ${theme.bg} ${theme.textPrimary}`}>
+      {/* Enhanced Header */}
+      <header
+        className={`sticky top-0 z-20 ${theme.headerBg} backdrop-blur-md ${theme.border} border-b ${theme.shadow}`}
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <div
+                className={`text-xl font-bold ${theme.textPrimary} flex items-center gap-2`}
+              >
+                <span className="text-2xl">🎮</span>
+                <span>Playfinity Learning</span>
+              </div>
+              <div
+                className={`hidden sm:flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-${theme.primary}-100 to-${theme.secondary}-100 rounded-full`}
+              >
+                <span className="text-sm">🎨 Custom Topic</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {user && (
+                <div
+                  className={`hidden md:flex items-center gap-2 px-3 py-1 bg-${theme.primary}-100 rounded-full`}
+                >
+                  <span className="text-sm font-medium">
+                    👤 {user.disability || "General"} Profile
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={() => navigate("/")}
+                className={`flex items-center gap-2 px-4 py-2 ${theme.border} border rounded-xl ${theme.textSecondary} hover:${theme.textPrimary} ${theme.animations} ${theme.focusRing}`}
+              >
+                <span>←</span>
+                <span className="hidden sm:inline">Back to Home</span>
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => navigate("/")}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100"
-          >
-            ← Back to Home
-          </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
-        <div className="space-y-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              {topic.charAt(0).toUpperCase() + topic.slice(1)} –{" "}
-              {getCurrentGameTitle()}
-            </h1>
-            <div className="flex items-center gap-3 text-sm text-gray-500 mt-2">
-              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
-                🎨 AI Generated Topic
-              </span>
-              <span>{getCurrentGameDescription()}</span>
-
-              {/* ✅ Show learning profile */}
-              {user?.disability && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                  👤 {user.disability} Profile
-                </span>
-              )}
-
-              {source && (
-                <span
-                  className={`px-2 py-1 rounded-full text-xs ${
-                    source === "firebase"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+        <div className="space-y-8">
+          {/* Enhanced Topic Header */}
+          <div
+            className={`${theme.cardBg} rounded-3xl p-8 ${theme.shadow} ${theme.border} border`}
+          >
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <span className="text-4xl">✨</span>
+                <h1
+                  className={`text-4xl font-bold ${theme.textPrimary} capitalize`}
                 >
-                  {source === "firebase"
-                    ? "📚 From Database"
-                    : "✨ Freshly Generated"}
-                </span>
-              )}
+                  {topic}
+                </h1>
+                <span className="text-4xl">✨</span>
+              </div>
 
-              {normalizedImages && normalizedImages.length > 0 && (
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                  🖼️ {normalizedImages.length} Images
+              <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+                <span
+                  className={`px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 rounded-full font-medium ${theme.fontSize}`}
+                >
+                  🎨 AI Generated Topic
                 </span>
-              )}
-            </div>
-
-            {/* ✅ Updated progress indicator - only show allowed games */}
-            <div className="flex items-center gap-2 mt-3">
-              {getGameProgress().map((game, index) => (
-                <React.Fragment key={game.phase}>
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      game.status === "completed"
-                        ? "bg-green-500"
-                        : game.status === "current"
-                        ? "bg-blue-500"
-                        : "bg-gray-300"
-                    }`}
-                  ></div>
+                {source && (
                   <span
-                    className={`text-xs ${
-                      game.status === "current"
-                        ? "font-semibold text-blue-600"
-                        : ""
+                    className={`px-4 py-2 rounded-full font-medium ${
+                      theme.fontSize
+                    } ${
+                      source === "firebase"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-green-100 text-green-800"
                     }`}
                   >
-                    {game.phase === "spelling"
-                      ? "Spelling"
-                      : game.phase === "drawing"
-                      ? "Drawing"
-                      : game.phase === "gallery"
-                      ? "Gallery"
-                      : "Quiz"}
+                    {source === "firebase"
+                      ? "📚 From Database"
+                      : "✨ Freshly Generated"}
                   </span>
-                  {index < getGameProgress().length - 1 && (
-                    <span className="text-gray-300">→</span>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
+                )}
+                {normalizedImages && normalizedImages.length > 0 && (
+                  <span
+                    className={`px-4 py-2 bg-emerald-100 text-emerald-800 rounded-full font-medium ${theme.fontSize}`}
+                  >
+                    🖼️ {normalizedImages.length} Images
+                  </span>
+                )}
+              </div>
 
-            {/* ✅ Show restricted message */}
-            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-xs text-yellow-800">
-                <span className="font-medium">Learning Profile:</span>{" "}
-                {userGameAccess.restrictedMessage}
-              </p>
-              <p className="text-xs text-yellow-600 mt-1">
-                Playing {allowedPhases.length} out of 4 available games
-              </p>
+              <div className={`text-xl ${theme.textSecondary} mb-6`}>
+                <span className="font-bold">{getCurrentGameTitle()}</span> •{" "}
+                {getCurrentGameDescription()}
+              </div>
+
+              {/* Enhanced Progress Indicator */}
+              <div
+                className={`flex items-center justify-center gap-4 p-4 bg-gradient-to-r from-${theme.primary}-50 to-${theme.secondary}-50 rounded-2xl`}
+              >
+                {getGameProgress().map((game, index) => (
+                  <React.Fragment key={game.phase}>
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${
+                          game.status === "completed"
+                            ? `bg-green-500 text-white`
+                            : game.status === "current"
+                            ? `bg-gradient-to-r from-${theme.primary}-500 to-${theme.secondary}-500 text-white animate-pulse`
+                            : `bg-gray-200 text-gray-500`
+                        } ${theme.animations}`}
+                      >
+                        {game.status === "completed" ? "✓" : game.icon}
+                      </div>
+                      <span
+                        className={`text-xs font-medium ${
+                          game.status === "current"
+                            ? theme.textPrimary
+                            : theme.textMuted
+                        }`}
+                      >
+                        {game.name}
+                      </span>
+                    </div>
+                    {index < getGameProgress().length - 1 && (
+                      <div
+                        className={`w-8 h-0.5 ${
+                          index < allowedPhases.indexOf(gamePhase)
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        } ${theme.animations}`}
+                      ></div>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              {/* Learning Profile Info */}
+              <div
+                className={`mt-6 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-2xl`}
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-xl">🎯</span>
+                  <span className={`font-bold ${theme.textPrimary}`}>
+                    Learning Profile Active
+                  </span>
+                </div>
+                <p className={`text-sm ${theme.textSecondary} mb-2`}>
+                  <strong>Profile:</strong> {user?.disability || "General"} •{" "}
+                  <strong>Available Games:</strong> {allowedPhases.length}/4
+                </p>
+                <p className={`text-xs ${theme.textMuted}`}>
+                  {userGameAccess.restrictedMessage}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 p-6 bg-[#f1f5f9] shadow-2xl">
-            {/* ✅ Only render games that are allowed */}
+          {/* Enhanced Game Container */}
+          <div
+            className={`${theme.cardBg} rounded-3xl p-8 ${theme.shadow} ${theme.border} border min-h-[600px]`}
+          >
+            {/* Only render games that are allowed */}
             {gamePhase === "spelling" &&
               isGamePhaseAllowed("spelling") &&
               finalGameData?.spelling && (
@@ -652,18 +749,22 @@ function CustomGamePage() {
               )}
 
             {gamePhase === "completed" && (
-              <div className="text-center py-8">
-                <div className="text-6xl mb-4">🎉</div>
-                <h2 className="text-2xl font-bold mb-2 text-gray-900">
-                  Amazing Work!
+              <div className="text-center py-12">
+                <div className="text-8xl mb-6 animate-bounce">🎉</div>
+                <h2 className={`text-4xl font-bold mb-4 ${theme.textPrimary}`}>
+                  Mission Accomplished!
                 </h2>
-                <p className="text-gray-500 mb-6">
-                  You completed all available games for the topic "{topic}" in
-                  your learning profile!
+                <p className={`${theme.textSecondary} mb-8 text-xl`}>
+                  You've successfully completed all available games for{" "}
+                  <strong>"{topic}"</strong>
+                  using your <strong>
+                    {user?.disability || "General"}
+                  </strong>{" "}
+                  learning profile!
                 </p>
 
-                {/* ✅ Show only completed games */}
-                <div className="grid grid-cols-2 gap-4 mb-6 max-w-md mx-auto">
+                {/* Game Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 max-w-2xl mx-auto">
                   {allowedPhases.map((phase) => {
                     const gameInfo = {
                       spelling: {
@@ -697,17 +798,17 @@ function CustomGamePage() {
                     return (
                       <div
                         key={phase}
-                        className={`bg-${gameInfo.color}-50 p-3 rounded-lg`}
+                        className={`bg-gradient-to-br from-${gameInfo.color}-100 to-${gameInfo.color}-200 p-4 rounded-2xl ${theme.animations} hover:scale-105`}
                       >
+                        <div className="text-3xl mb-2">{gameInfo.icon}</div>
                         <div
-                          className={`text-2xl font-bold text-${gameInfo.color}-600`}
+                          className={`text-sm font-medium ${theme.textPrimary} mb-1`}
                         >
-                          {gameInfo.icon}
-                        </div>
-                        <div className="text-sm text-gray-600">
                           {gameInfo.name}
                         </div>
-                        <div className="text-lg font-semibold">
+                        <div
+                          className={`text-lg font-bold text-${gameInfo.color}-600`}
+                        >
                           +{gameInfo.points} pts
                         </div>
                       </div>
@@ -715,55 +816,100 @@ function CustomGamePage() {
                   })}
                 </div>
 
-                {/* ✅ Show learning profile summary */}
-                <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                  <h3 className="font-semibold mb-2">
-                    📚 Learning Profile Summary
+                {/* Learning Achievement Summary */}
+                <div
+                  className={`bg-gradient-to-r from-${theme.primary}-100 to-${theme.secondary}-100 p-6 rounded-2xl mb-8 ${theme.border} border`}
+                >
+                  <h3
+                    className={`text-xl font-bold ${theme.textPrimary} mb-3 flex items-center justify-center gap-2`}
+                  >
+                    <span className="text-2xl">📚</span>
+                    Learning Achievement Summary
                   </h3>
-                  <p className="text-sm text-gray-600">
-                    Profile:{" "}
-                    <span className="font-medium">
-                      {user?.disability || "General"}
-                    </span>
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Games Completed:{" "}
-                    <span className="font-medium">{allowedPhases.length}</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <div className="grid md:grid-cols-2 gap-4 text-left max-w-md mx-auto">
+                    <div>
+                      <p className={`${theme.textSecondary} text-sm`}>
+                        <strong>Learning Profile:</strong>{" "}
+                        {user?.disability || "General"}
+                      </p>
+                      <p className={`${theme.textSecondary} text-sm`}>
+                        <strong>Games Completed:</strong> {allowedPhases.length}
+                        /4
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`${theme.textSecondary} text-sm`}>
+                        <strong>Total Points:</strong>{" "}
+                        {allowedPhases.reduce(
+                          (sum, phase) =>
+                            sum +
+                            ({ spelling: 10, drawing: 15, gallery: 5, gk: 20 }[
+                              phase
+                            ] || 0),
+                          0
+                        )}
+                      </p>
+                      <p className={`${theme.textSecondary} text-sm`}>
+                        <strong>Images Generated:</strong>{" "}
+                        {normalizedImages?.length || 0}
+                      </p>
+                    </div>
+                  </div>
+                  <p className={`${theme.textMuted} text-xs mt-3`}>
                     {userGameAccess.restrictedMessage}
                   </p>
                 </div>
 
+                {/* Generated Images Preview */}
                 {normalizedImages && normalizedImages.length > 0 && (
-                  <div className="bg-green-50 p-4 rounded-lg mb-6">
-                    <h3 className="font-semibold mb-2">
-                      🎨 AI Generated Images:
+                  <div
+                    className={`bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl mb-8 border border-emerald-200`}
+                  >
+                    <h3
+                      className={`text-xl font-bold ${theme.textPrimary} mb-4 flex items-center justify-center gap-2`}
+                    >
+                      <span className="text-2xl">🎨</span>
+                      AI Generated Learning Images
                     </h3>
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {normalizedImages.slice(0, 4).map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img.url}
-                          alt={img.prompt}
-                          className="w-16 h-16 object-cover rounded border"
-                          title={img.prompt}
-                        />
+                    <div className="flex flex-wrap justify-center gap-4">
+                      {normalizedImages.slice(0, 6).map((img, idx) => (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={img.url}
+                            alt={img.prompt}
+                            className="w-20 h-20 object-cover rounded-xl border-2 border-white shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                            title={img.prompt}
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-xl transition-all flex items-center justify-center">
+                            <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                              View
+                            </span>
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-600 mt-2">
-                      Generated {normalizedImages.length} unique images for this
-                      topic!
+                    <p className={`text-xs ${theme.textMuted} mt-4`}>
+                      Generated {normalizedImages.length} unique educational
+                      images for enhanced learning!
                     </p>
                   </div>
                 )}
 
-                <div className="flex justify-center gap-3">
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                   <button
                     onClick={() => navigate("/")}
-                    className="rounded-md bg-indigo-600 text-white px-6 py-2 hover:bg-indigo-700"
+                    className={`${theme.button} text-white px-8 py-4 rounded-2xl font-bold ${theme.animations} ${theme.focusRing} ${theme.shadow} hover:shadow-2xl flex items-center gap-2`}
                   >
-                    Draw Something New
+                    <span className="text-xl">🎨</span>
+                    <span>Create New Topic</span>
+                  </button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className={`px-8 py-4 rounded-2xl font-bold ${theme.animations} ${theme.focusRing} border-2 ${theme.border} ${theme.textPrimary} hover:bg-gray-50 flex items-center gap-2`}
+                  >
+                    <span className="text-xl">🔄</span>
+                    <span>Play Again</span>
                   </button>
                 </div>
               </div>
