@@ -39,7 +39,6 @@ export const topics: Topic[] = [
   { id: "t4", title: "Geography" },
   { id: "t5", title: "Arts" },
 ];
-
 export function App() {
   return (
     <ScoreProvider>
@@ -48,7 +47,7 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/game/:topicId" element={<GamePage />} />
 
-          {/* ✅ Real canvas-to-games feature */}
+          {/* ✅ Make sure this route exists */}
           <Route path="/custom-games" element={<CustomGamePage />} />
 
           {/* ✅ Test version (no API calls) */}

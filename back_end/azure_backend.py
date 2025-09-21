@@ -1,57 +1,75 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import requests
 import json
 import re
 import base64
-import io
-from PIL import Image
-from openai import OpenAI
 import os
+from openai import OpenAI
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# --- Azure Configuration ---
-subscription_key = os.getenv("AZURE_VISION_KEY")  # Changed to use env variable
+# --- Configuration ---
+subscription_key = os.getenv("AZURE_VISION_KEY")
 endpoint = "https://aharondecode.cognitiveservices.azure.com/"
 analyze_url = endpoint + "vision/v3.2/analyze"
 params = {"visualFeatures": "Description,Tags,Objects"}
 
-# --- OpenRouter/Llama Configuration ---
-openrouter_api_key = os.getenv("OPENAI_API_KEY")  # Reusing the same env variable
+openrouter_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=openrouter_api_key,
 )
 
-# --- FastAPI Setup ---
-app = FastAPI()
+# --- FastAPI Setup (CREATE APP FIRST!) ---
+app = FastAPI(title="Playfinity Backend with Image Generation and OCR")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",   # Vite default
-        "http://127.0.0.1:5173",  # Also allow 127.0.0.1
-        "http://127.0.0.1:3000",   # React default
-        "http://localhost:3000",   # React default
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Pydantic Models ---
+# --- Import Services AFTER app is created ---
+try:
+    from image_generation_service import image_service
+    DIFFUSERS_AVAILABLE = True
+    print("✅ Image generation service available")
+except ImportError:
+    DIFFUSERS_AVAILABLE = False
+    print("❌ Image generation service not available")
+
+try:
+    from ocr_service import ocr_service
+    OCR_AVAILABLE = True
+    print("✅ OCR service available")
+except ImportError:
+    OCR_AVAILABLE = False
+    print("❌ OCR service not available")
+
+# --- Models ---
 class GameGenerationRequest(BaseModel):
     topic: str
     age_group: str = "7-11"
+    generate_images: bool = True
 
 class ImageUploadRequest(BaseModel):
-    image: str  # Base64 encoded image
+    image: str
     label: str = ""
+
+class LetterCheckRequest(BaseModel):
+    image: str  # base64 encoded image
+    expected_letter: str
 
 # --- Helper Functions ---
 def create_fallback_games(topic):
@@ -61,9 +79,9 @@ def create_fallback_games(topic):
         },
         "game2": {
             "prompts": [
-                f"Draw a simple representation of {topic}",
-                f"Draw {topic} in action or being used",
-                f"Draw the result or effect of {topic}"
+                f"a simple colorful drawing of {topic}",
+                f"a cute cartoon {topic} with big eyes",
+                f"a bright and cheerful {topic} scene"
             ]
         },
         "game3": {
@@ -87,30 +105,25 @@ def create_fallback_games(topic):
 
 def extract_json_from_response(response_text):
     try:
-        # First try direct parsing
         return json.loads(response_text)
     except json.JSONDecodeError:
         try:
-            # Try to find JSON within markdown code blocks
             json_match = re.search(r'```(?:json)?\s*(\{.*\})\s*```', response_text, re.DOTALL)
             if json_match:
                 json_str = json_match.group(1)
                 return json.loads(json_str)
             
-            # Try to find JSON without code blocks
             json_match = re.search(r'(\{.*\})', response_text, re.DOTALL)
             if json_match:
                 json_str = json_match.group(1)
                 return json.loads(json_str)
             
-            # If no JSON found, return None
             raise ValueError("No JSON found in response")
             
         except (json.JSONDecodeError, ValueError) as e:
             print(f"Failed to parse JSON: {e}")
             return None
 
-# Core function for Azure image analysis
 async def analyze_image(file: UploadFile):
     image_data = await file.read()
     headers = {
@@ -127,34 +140,36 @@ async def analyze_image(file: UploadFile):
     response.raise_for_status()
     return response.json()
 
-# Core function for game generation
-# Core function for game generation
 def generate_games(topic, age_group):
+    """Generate games with detailed prompts for image generation"""
     prompt = f"""
-You are an educational assistant. 
-Based on the topic "{topic}" and age group "{age_group}", generate text for 4 games. 
-Everything must be adapted to the given age group.
+You are an educational assistant creating games for children. 
+Based on the topic "{topic}" and age group "{age_group}", generate content for 4 educational games. 
 
-Game 1: A single word related to the topic (maximum 8 letters). Child tries to spell the word.
+Game 1: A single word related to the topic (maximum 8 letters). Child will spell this word.
 
-Game 2: Generate 3-5 prompts for drawing activities. 
-Each prompt should describe one step or aspect of "{topic}" clearly.
-Return them as a list.
+Game 2: Generate exactly 4 detailed visual prompts related to "{topic}". 
+These prompts will be used to generate AI images for children.
+Make them simple, colorful, and child-friendly.
+Examples for "heart": 
+- "a cute red heart with a happy smiling face"
+- "a heart-shaped balloon floating in blue sky with white clouds"  
+- "children holding hands in heart formation in a sunny park"
+- "a heart made of colorful flowers in a garden"
 
-Game 3: Generate 3 quiz questions related to "{topic}". 
-Each question must have 4 options. Mark the correct answer clearly. 
-Make questions appropriate for age {age_group}.
+Game 3: Generate 3 quiz questions about "{topic}". 
+Each question must have 4 options. Mark the correct answer clearly.
 
-Game 4: Generate a simple math problem connected to "{topic}" for the age group.
+Game 4: Generate a simple math problem connected to "{topic}" for age {age_group}.
 
-Return ONLY valid JSON without any markdown formatting or explanation:
+Return ONLY valid JSON:
 
 {{
   "game1": {{
-    "word": "word_here"
+    "word": "WORD"
   }},
   "game2": {{
-    "prompts": ["prompt1", "prompt2", "prompt3"]
+    "prompts": ["prompt1", "prompt2", "prompt3", "prompt4"]
   }},
   "game3": {{
     "questions": [
@@ -166,27 +181,26 @@ Return ONLY valid JSON without any markdown formatting or explanation:
     ]
   }},
   "game4": {{
-    "calculation": "math_problem_text"
+    "calculation": "math_problem"
   }}
 }}
 """
 
     try:
         response = client.chat.completions.create(
-            model="meta-llama/llama-4-maverick:free",  # Updated to use Llama 4 Maverick
+            model="meta-llama/llama-3.1-8b-instruct",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1000,
             temperature=0.7,
             extra_headers={
-                "HTTP-Referer": "https://playfinity.app",  # Optional for rankings
-                "X-Title": "Playfinity Educational Games",  # Optional for rankings
+                "HTTP-Referer": "https://playfinity.app",
+                "X-Title": "Playfinity Educational Games",
             }
         )
 
         raw_response = response.choices[0].message.content
         print(f"Raw response: {raw_response}")
 
-        # Parse the response
         parsed_games = extract_json_from_response(raw_response)
         
         if parsed_games is None:
@@ -199,18 +213,55 @@ Return ONLY valid JSON without any markdown formatting or explanation:
     except Exception as e:
         print(f"Error in generate_games: {e}")
         return create_fallback_games(topic)
-# --- API Endpoints ---
 
+# --- API Endpoints ---
 @app.get("/")
 async def root():
-    return {"message": "Azure Backend API is running!"}
+    return {
+        "message": "Playfinity Backend with Image Generation and OCR is running!",
+        "image_generation_available": DIFFUSERS_AVAILABLE,
+        "ocr_available": OCR_AVAILABLE
+    }
+
+@app.post("/check-letter")
+async def check_letter(request: LetterCheckRequest):
+    """Check if drawn letter matches expected letter using Azure OCR"""
+    if not OCR_AVAILABLE:
+        return {
+            "success": False,
+            "correct": False,
+            "error": "OCR service not available",
+            "detected": "",
+            "expected": request.expected_letter.upper()
+        }
+    
+    try:
+        print(f"🔤 Checking letter: expected '{request.expected_letter}'")
+        
+        result = ocr_service.check_letter_match(request.image, request.expected_letter)
+        
+        if result["success"]:
+            print(f"✅ Letter check result: {result['correct']} - Detected: '{result['detected']}'")
+        else:
+            print(f"❌ Letter check failed: {result.get('error', 'Unknown error')}")
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error in check_letter endpoint: {e}")
+        return {
+            "success": False,
+            "correct": False,
+            "error": str(e),
+            "detected": "",
+            "expected": request.expected_letter.upper()
+        }
 
 @app.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
     try:
         result = await analyze_image(file)
         
-        # Extract tags with confidence scores
         tags = []
         if "tags" in result:
             for tag in result["tags"]:
@@ -219,7 +270,6 @@ async def predict_image(file: UploadFile = File(...)):
                     "confidence": round(tag["confidence"] * 100, 1)
                 })
         
-        # Get description
         description = ""
         if "description" in result and "captions" in result["description"]:
             captions = result["description"]["captions"]
@@ -247,9 +297,9 @@ async def generate_games_endpoint(request: GameGenerationRequest):
     try:
         print(f"Generating games for topic: {request.topic}, age group: {request.age_group}")
         
+        # Generate games using Llama
         games = generate_games(request.topic, request.age_group)
         
-        # Validate the structure
         if not isinstance(games, dict):
             raise ValueError("Games must be a dictionary")
         
@@ -260,23 +310,39 @@ async def generate_games_endpoint(request: GameGenerationRequest):
                 games = create_fallback_games(request.topic)
                 break
         
-        print(f"Final games response: {games}")
-        return {"success": True, "games": games}
+        response_data = {"success": True, "games": games}
+        
+        # Generate images if requested and available
+        if request.generate_images and DIFFUSERS_AVAILABLE and 'game2' in games and 'prompts' in games['game2']:
+            prompts = games['game2']['prompts']
+            print(f"🎨 Generating images for prompts: {prompts}")
+            
+            image_result = image_service.generate_images_from_prompts(prompts, request.topic)
+            response_data['images'] = image_result
+            
+            if image_result['success']:
+                print(f"✅ Generated {image_result['total_generated']} images successfully")
+            else:
+                print(f"❌ Image generation failed: {image_result.get('error', 'Unknown error')}")
+        
+        print(f"Final response: Games + {len(response_data.get('images', {}).get('images', []))} images")
+        return response_data
         
     except Exception as e:
         print(f"Error generating games: {str(e)}")
-        # Return fallback games instead of error
         fallback_games = create_fallback_games(request.topic)
-        return {"success": True, "games": fallback_games}
+        return {
+            "success": True, 
+            "games": fallback_games,
+            "images": {"success": False, "error": "Fallback mode - no images generated"}
+        }
 
 @app.post("/upload/")
 async def upload_drawing(request: ImageUploadRequest):
     try:
-        # Decode base64 image
         image_data = request.image.split(",")[1] if "," in request.image else request.image
         image_bytes = base64.b64decode(image_data)
         
-        # Save to file (optional)
         filename = f"drawing_{request.label}_{hash(request.image) % 10000}.png"
         with open(filename, "wb") as f:
             f.write(image_bytes)
@@ -292,7 +358,17 @@ async def upload_drawing(request: ImageUploadRequest):
         print(f"Error saving drawing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- Run the app ---
 if __name__ == "__main__":
     import uvicorn
+    print(f"🚀 Starting Playfinity backend...")
+    if DIFFUSERS_AVAILABLE:
+        print(f"✅ Image generation enabled")
+    else:
+        print("⚠️ Image generation disabled - check dependencies")
+    
+    if OCR_AVAILABLE:
+        print(f"✅ OCR enabled")
+    else:
+        print("⚠️ OCR disabled - check dependencies")
+    
     uvicorn.run(app, host="127.0.0.1", port=8000)

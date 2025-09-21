@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Add this import
+import { useNavigate } from "react-router-dom";
 
 interface Tag {
   name: string;
@@ -20,8 +20,12 @@ export function DrawingCanvas() {
   const [brush, setBrush] = useState(5);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [generatingGames, setGeneratingGames] = useState(false); // ✅ Add this state
-  const navigate = useNavigate(); // ✅ Add this hook
+
+  // ✅ Add missing state variables
+  const [generatingGames, setGeneratingGames] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<string>("");
+
+  const navigate = useNavigate();
 
   // ...all your existing canvas functions (unchanged)...
   function fillWhiteBackground(
@@ -104,6 +108,7 @@ export function DrawingCanvas() {
     const rect = canvas.getBoundingClientRect();
     fillWhiteBackground(ctx, rect.width, rect.height);
     setResult(null);
+    setSelectedTag(""); // ✅ Reset selected tag
   }
 
   async function handleSubmit() {
@@ -133,6 +138,7 @@ export function DrawingCanvas() {
         }
 
         const data: AnalysisResult = await res.json();
+        console.log("🔍 Analysis result:", data); // ✅ Add debug log
         setResult(data);
       } catch (err) {
         console.error("Error submitting image:", err);
@@ -150,12 +156,15 @@ export function DrawingCanvas() {
     }, "image/png");
   }
 
-  // ✅ Add function to handle tag clicks
+  // ✅ Fixed handleTagClick function
   const handleTagClick = async (tagName: string) => {
+    console.log(`🎯 Tag clicked: ${tagName}`);
+    setSelectedTag(tagName);
     setGeneratingGames(true);
 
     try {
-      // Call the backend to generate games
+      console.log(`🎮 Generating games for topic: ${tagName}`);
+
       const response = await fetch("http://127.0.0.1:8000/generate-games", {
         method: "POST",
         headers: {
@@ -164,28 +173,41 @@ export function DrawingCanvas() {
         body: JSON.stringify({
           topic: tagName,
           age_group: "7-11",
+          generate_images: true, // ✅ Enable image generation
         }),
       });
+
+      console.log(`📡 Response status: ${response.status}`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const result = await response.json();
+      console.log("🎯 Games generated successfully:", result);
 
-      if (data.success && data.games) {
-        // Navigate to a custom game page with the generated data
-        navigate("/custom-game", {
+      if (result.success && result.games) {
+        console.log("🚀 Navigating to custom-games with data:", {
+          topic: tagName,
+          gameData: result.games,
+          images: result.images || null, // ✅ Pass generated images
+        });
+
+        // Navigate to custom-games
+        navigate("/custom-games", {
           state: {
             topic: tagName,
-            gameData: data.games,
+            gameData: result.games,
+            images: result.images || null, // ✅ Include images
           },
         });
       } else {
-        throw new Error("Failed to generate games");
+        throw new Error(
+          "Failed to generate games: " + (result.error || "Unknown error")
+        );
       }
-    } catch (err) {
-      console.error("Error generating games:", err);
+    } catch (error) {
+      console.error("❌ Error generating games:", error);
       alert(`Failed to generate games for "${tagName}". Please try again.`);
     } finally {
       setGeneratingGames(false);
@@ -254,7 +276,7 @@ export function DrawingCanvas() {
           <div className="flex items-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-2"></div>
             <span className="text-yellow-800 text-sm font-medium">
-              Generating educational games...
+              🎮 Generating educational games for "{selectedTag}"...
             </span>
           </div>
         </div>
@@ -286,9 +308,13 @@ export function DrawingCanvas() {
                     {result.tags.map((tag, index) => (
                       <button
                         key={index}
-                        onClick={() => handleTagClick(tag.name)}
+                        onClick={() => handleTagClick(tag.name)} // ✅ Fixed: pass tag.name
                         disabled={generatingGames}
-                        className="px-3 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed"
+                        className={`px-3 py-2 text-white rounded text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
+                          selectedTag === tag.name
+                            ? "bg-purple-600 hover:bg-purple-700"
+                            : "bg-blue-500 hover:bg-blue-600"
+                        } ${generatingGames ? "bg-blue-300" : ""}`}
                       >
                         🎮 {tag.name} ({tag.confidence}%)
                       </button>

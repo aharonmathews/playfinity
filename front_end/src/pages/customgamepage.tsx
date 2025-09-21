@@ -20,6 +20,18 @@ interface GameData {
   game4: { calculation: string };
 }
 
+interface ImageData {
+  success: boolean;
+  images?: Array<{
+    image_base64: string;
+    prompt: string;
+    index: number;
+    filename?: string;
+    enhanced_prompt?: string;
+  }>;
+  error?: string;
+}
+
 function CustomGamePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,15 +41,34 @@ function CustomGamePage() {
     "spelling" | "drawing" | "gallery" | "gk" | "completed"
   >("spelling");
 
-  // ✅ Get data from canvas (passed via navigation state)
-  let { topic, gameData }: { topic: string; gameData: GameData | string } =
-    location.state || {};
+  // ✅ Extract ALL data from navigation state
+  const locationState = location.state || {};
+  const {
+    topic,
+    gameData,
+    images,
+  }: {
+    topic: string;
+    gameData: GameData | string;
+    images: ImageData | null;
+  } = locationState;
+
+  // ✅ Debug log to see what we received
+  console.log("🎮 CustomGamePage received:", {
+    topic,
+    gameData: typeof gameData,
+    images: images
+      ? `${images.success ? "success" : "failed"} with ${
+          images.images?.length || 0
+        } images`
+      : "null",
+  });
 
   // ✅ Parse gameData if it's a string (from Llama API)
   let parsedGameData: GameData | null = null;
 
   if (typeof gameData === "string") {
-    console.log("gameData is string, attempting to parse...");
+    console.log("🔧 gameData is string, attempting to parse...");
     try {
       const jsonMatch = gameData.match(/```(?:json)?\s*(\{.*\})\s*```/s);
       if (jsonMatch) {
@@ -49,7 +80,7 @@ function CustomGamePage() {
         }
       }
     } catch (error) {
-      console.error("Failed to parse gameData:", error);
+      console.error("❌ Failed to parse gameData:", error);
       // Create fallback data
       parsedGameData = {
         game1: { word: topic?.toUpperCase().slice(0, 8) || "HEART" },
@@ -75,6 +106,7 @@ function CustomGamePage() {
   // Redirect if no data
   useEffect(() => {
     if (!topic || !finalGameData) {
+      console.log("⚠️ Missing data, redirecting to home");
       navigate("/");
     }
   }, [topic, finalGameData, navigate]);
@@ -184,6 +216,13 @@ function CustomGamePage() {
                 🎨 AI Generated Topic
               </span>
               <span>{getCurrentGameDescription()}</span>
+
+              {/* ✅ Show image generation status */}
+              {images?.success && (
+                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                  🖼️ {images.images?.length || 0} AI Images
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2 mt-3">
@@ -241,8 +280,8 @@ function CustomGamePage() {
             {gamePhase === "drawing" && (
               <DrawingGame
                 topic={topic}
-                word={finalGameData?.game1?.word} // ✅ Pass word for letter drawing
-                prompts={finalGameData?.game2?.prompts} // ✅ Fallback prompts
+                word={finalGameData?.game1?.word}
+                prompts={finalGameData?.game2?.prompts}
                 onGameComplete={handleDrawingComplete}
               />
             )}
@@ -250,6 +289,7 @@ function CustomGamePage() {
             {gamePhase === "gallery" && (
               <ImageGalleryGame
                 topic={topic}
+                images={images?.success ? images.images : null} // ✅ Pass the generated images!
                 onGameComplete={handleGalleryComplete}
               />
             )}
@@ -303,6 +343,32 @@ function CustomGamePage() {
                     </p>
                   </div>
                 )}
+
+                {/* ✅ Show image generation summary */}
+                {images?.success &&
+                  images.images &&
+                  images.images.length > 0 && (
+                    <div className="bg-green-50 p-4 rounded-lg mb-6">
+                      <h3 className="font-semibold mb-2">
+                        🎨 AI Generated Images:
+                      </h3>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {images.images.slice(0, 4).map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img.image_base64}
+                            alt={img.prompt}
+                            className="w-16 h-16 object-cover rounded border"
+                            title={img.prompt}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">
+                        Generated {images.images.length} unique images for this
+                        topic!
+                      </p>
+                    </div>
+                  )}
 
                 <div className="flex justify-center gap-3">
                   <button
