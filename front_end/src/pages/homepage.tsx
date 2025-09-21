@@ -4,7 +4,9 @@ import { DrawingCanvas } from "../components/DrawingCanvas";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { topics, celebrate, type Topic, type UserProfile } from "../App";
-import { useScore } from "../contexts/ScoreContext"; // ✅ Import the hook
+import { useScore } from "../contexts/ScoreContext";
+import TypeQuestGame from "../components/games/TypeQuestGame";
+import RhymeRoundupGame from "../components/games/RhymeRoundupGame";
 
 function HomePage() {
   const bubbleContainerRef = useRef<HTMLDivElement>(null);
@@ -13,8 +15,9 @@ function HomePage() {
   >([]);
   const bubbleId = useRef(0);
 
-  // ✅ Use the context instead of userScore
   const { score, addPoints } = useScore();
+  const [showTypeQuest, setShowTypeQuest] = useState(false);
+  const [showRhymeRoundup, setShowRhymeRoundup] = useState(false);
 
   const bubblePopSound = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
@@ -71,9 +74,6 @@ function HomePage() {
     disability: "Dyslexia",
   });
 
-  // ✅ REMOVE THIS LINE - DON'T USE userScore
-  // const [score, setScore] = useState(userScore); // ❌ This is probably line 69
-
   const [showCanvas, setShowCanvas] = useState(false);
   const navigate = useNavigate();
 
@@ -84,9 +84,8 @@ function HomePage() {
       ? 0
       : Math.round(((coveredCount - runningCount) / coveredCount) * 100);
 
-  // ✅ Use addPoints from context
   function awardPoints(points: number) {
-    addPoints(points); // ✅ This uses the context
+    addPoints(points);
   }
 
   function navigateToGame(topic: Topic) {
@@ -143,15 +142,87 @@ function HomePage() {
               coveredCount={coveredCount}
               runningCount={runningCount}
               progressPercent={progressPercent}
-              score={score} // ✅ Now from context
+              score={score}
             />
-            <button
-              onClick={() => navigate("/test-games")}
-              className="w-full rounded-lg bg-red-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-red-500"
-            >
-              🧪 Test Custom Games (No API)
-            </button>
 
+            {/* ✅ Games Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* TypeQuest Game Button */}
+              <div
+                className="bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 p-6 rounded-lg cursor-pointer transition-all duration-300 group shadow-lg hover:shadow-xl transform hover:scale-105"
+                onClick={() => setShowTypeQuest(true)}
+              >
+                <div className="text-center text-white">
+                  <div className="text-5xl mb-3 group-hover:animate-bounce">
+                    ⚔️
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">TypeQuest</h3>
+                  <p className="text-purple-100 text-sm mb-3">
+                    Battle monsters with math skills!
+                  </p>
+                  <div className="flex justify-center gap-2 text-xs">
+                    <span className="bg-purple-500 px-2 py-1 rounded-full">
+                      Math Combat
+                    </span>
+                    <span className="bg-purple-500 px-2 py-1 rounded-full">
+                      RPG Style
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dyslexic Rhyming Words Button */}
+              <div
+                className="bg-gradient-to-br from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 p-6 rounded-lg cursor-pointer transition-all duration-300 group shadow-lg hover:shadow-xl transform hover:scale-105"
+                onClick={() => setShowRhymeRoundup(true)}
+              >
+                <div className="text-center text-white">
+                  <div className="text-5xl mb-3 group-hover:animate-bounce">
+                    🤠
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">
+                    Dyslexic Rhyming Words
+                  </h3>
+                  <p className="text-green-100 text-sm mb-3">
+                    Catch falling words that rhyme!
+                  </p>
+                  <div className="flex justify-center gap-2 text-xs">
+                    <span className="bg-green-500 px-2 py-1 rounded-full">
+                      Phonics
+                    </span>
+                    <span className="bg-green-500 px-2 py-1 rounded-full">
+                      Dyslexia-Friendly
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Test Games Button */}
+              <div
+                className="bg-gradient-to-br from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 p-6 rounded-lg cursor-pointer transition-all duration-300 group shadow-lg hover:shadow-xl transform hover:scale-105"
+                onClick={() => navigate("/test-games")}
+              >
+                <div className="text-center text-white">
+                  <div className="text-5xl mb-3 group-hover:animate-spin">
+                    🧪
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">Test Games</h3>
+                  <p className="text-red-100 text-sm mb-3">
+                    Try experimental learning games
+                  </p>
+                  <div className="flex justify-center gap-2 text-xs">
+                    <span className="bg-red-500 px-2 py-1 rounded-full">
+                      No API
+                    </span>
+                    <span className="bg-red-500 px-2 py-1 rounded-full">
+                      Testing
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Canvas Section */}
             <div className="rounded-lg border border-gray-200 p-4 bg-[#f1f5f9] space-y-3">
               {!showCanvas ? (
                 <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -193,6 +264,44 @@ function HomePage() {
           </section>
         </div>
       </main>
+
+      {/* ✅ TypeQuest Game Modal */}
+      {showTypeQuest && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-2xl">
+            <div className="flex justify-end p-4">
+              <button
+                onClick={() => setShowTypeQuest(false)}
+                className="text-gray-400 hover:text-white text-2xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-4 pb-4">
+              <TypeQuestGame onGameComplete={() => setShowTypeQuest(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Rhyme Roundup Game Modal */}
+      {showRhymeRoundup && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[95vh] overflow-hidden shadow-2xl">
+            <div className="flex justify-end p-4">
+              <button
+                onClick={() => setShowRhymeRoundup(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-4 pb-4">
+              <RhymeRoundupGame />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

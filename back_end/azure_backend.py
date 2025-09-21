@@ -247,6 +247,15 @@ def generate_games_with_llama(topic: str, age_group: str):
 You are an educational game creator for children aged {age_group}. 
 Create educational games for the topic: "{topic}"
 
+For the gallery game, create 4 SEQUENTIAL images that show a process, stages, or related aspects of the topic in logical order. Think of it as telling a visual story.
+
+Examples:
+- If topic is "germination": [seed, sprouting seed, seedling, young plant]
+- If topic is "butterfly": [egg, caterpillar, chrysalis, butterfly] 
+- If topic is "cooking": [ingredients, mixing, cooking, finished dish]
+- If topic is "seasons": [spring, summer, autumn, winter]
+- If topic is "building": [foundation, walls, roof, completed house]
+
 Generate games in this EXACT JSON format:
 
 {{
@@ -260,40 +269,42 @@ Generate games in this EXACT JSON format:
   }},
   "gallery": {{
     "image_prompts": [
-      "a simple colorful illustration of {topic} for children",
-      "a cute cartoon {topic} with bright colors",
-      "a child-friendly drawing of {topic} in action",
-      "a happy scene showing {topic} in daily life"
+      "Stage 1: [first stage of {topic} process] - simple colorful illustration for children",
+      "Stage 2: [second stage of {topic} process] - cute cartoon style for kids", 
+      "Stage 3: [third stage of {topic} process] - child-friendly bright colors",
+      "Stage 4: [final stage of {topic} process] - happy conclusion scene for children"
     ],
-    "instructions": "Explore images related to {topic}"
+    "instructions": "Explore the {topic} process step by step"
   }},
   "quiz": {{
     "questions": [
       {{
-        "question": "What is {topic}?",
-        "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-        "correct_answer": "Option 1"
+        "question": "What happens first in {topic}?",
+        "options": ["Stage 1", "Stage 2", "Stage 3", "Stage 4"],
+        "correct_answer": "Stage 1"
       }},
       {{
-        "question": "How is {topic} used?",
-        "options": ["Way 1", "Way 2", "Way 3", "Way 4"],
-        "correct_answer": "Way 1"
+        "question": "What comes after the first stage of {topic}?",
+        "options": ["Stage 2", "Stage 3", "Stage 4", "Nothing"],
+        "correct_answer": "Stage 2"
       }},
       {{
-        "question": "Where do you find {topic}?",
-        "options": ["Place 1", "Place 2", "Place 3", "Place 4"],
-        "correct_answer": "Place 1"
+        "question": "What is the final result of {topic}?",
+        "options": ["Beginning", "Middle", "End result", "Nothing"],
+        "correct_answer": "End result"
       }}
     ],
-    "instructions": "Answer questions about {topic}"
+    "instructions": "Answer questions about the {topic} process"
   }}
 }}
+
+IMPORTANT: Replace [first stage], [second stage], etc. with actual specific stages relevant to the topic. Make the image prompts describe a clear sequence or process related to {topic}.
 
 Return ONLY the JSON, nothing else.
 """
 
     try:
-        print(f"🧠 Generating games with LLaMA for: {topic}")
+        print(f"🧠 Generating sequential games with LLaMA for: {topic}")
         
         response = client.chat.completions.create(
             model="meta-llama/llama-3.1-8b-instruct",
@@ -308,7 +319,14 @@ Return ONLY the JSON, nothing else.
         parsed_games = extract_json_from_response(raw_response)
         
         if parsed_games and all(key in parsed_games for key in ["spelling", "drawing", "gallery", "quiz"]):
-            print("✅ Successfully parsed games from LLaMA")
+            print("✅ Successfully parsed sequential games from LLaMA")
+            
+            # Debug: Show the generated image prompts
+            if "gallery" in parsed_games and "image_prompts" in parsed_games["gallery"]:
+                print("🎨 Generated sequential image prompts:")
+                for i, prompt in enumerate(parsed_games["gallery"]["image_prompts"]):
+                    print(f"  {i+1}. {prompt}")
+            
             return parsed_games
         else:
             print("❌ Invalid games structure, using fallback")

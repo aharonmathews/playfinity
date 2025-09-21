@@ -1,10 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
 import { GamePage } from "./pages/GamePage";
 import { SingleGamePage } from "./pages/SingleGamePage";
@@ -42,37 +37,35 @@ export const topics: Topic[] = [
 export function App() {
   return (
     <ScoreProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/game/:topicId" element={<GamePage />} />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/game/:topicId" element={<GamePage />} />
 
-          {/* ✅ Make sure this route exists */}
-          <Route path="/custom-games" element={<CustomGamePage />} />
+        {/* ✅ Make sure this route exists */}
+        <Route path="/custom-games" element={<CustomGamePage />} />
 
-          {/* ✅ Test version (no API calls) */}
-          <Route path="/test-games" element={<TestCustomGamePage />} />
+        {/* ✅ Test version (no API calls) */}
+        <Route path="/test-games" element={<TestCustomGamePage />} />
 
-          <Route
-            path="/game/:topicId/spelling"
-            element={<SingleGamePage gameType="spelling" />}
-          />
-          <Route
-            path="/game/:topicId/drawing"
-            element={<SingleGamePage gameType="drawing" />}
-          />
-          <Route
-            path="/game/:topicId/gallery"
-            element={<SingleGamePage gameType="gallery" />}
-          />
-          <Route
-            path="/game/:topicId/gk"
-            element={<SingleGamePage gameType="gk" />}
-          />
+        <Route
+          path="/game/:topicId/spelling"
+          element={<SingleGamePage gameType="spelling" />}
+        />
+        <Route
+          path="/game/:topicId/drawing"
+          element={<SingleGamePage gameType="drawing" />}
+        />
+        <Route
+          path="/game/:topicId/gallery"
+          element={<SingleGamePage gameType="gallery" />}
+        />
+        <Route
+          path="/game/:topicId/gk"
+          element={<SingleGamePage gameType="gk" />}
+        />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </ScoreProvider>
   );
 }
