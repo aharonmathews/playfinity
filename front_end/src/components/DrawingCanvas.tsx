@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
 
 interface Tag {
   name: string;
@@ -13,6 +14,44 @@ interface AnalysisResult {
   analysis: any;
 }
 
+// Define game access based on disabilities
+const GAME_ACCESS = {
+  ADHD: {
+    allowedGames: ["imageReordering", "quiz"],
+    restrictedMessage:
+      "Games focused on attention and logical thinking for ADHD learners.",
+  },
+  Dyslexia: {
+    allowedGames: ["spelling", "drawing", "imageReordering"],
+    restrictedMessage:
+      "Games focused on reading, phonics, and visual processing for dyslexic learners.",
+  },
+  Visual: {
+    allowedGames: ["quiz", "audio"],
+    restrictedMessage: "Audio-focused games for visual impairment support.",
+  },
+  Autism: {
+    allowedGames: ["drawing", "quiz", "pattern"],
+    restrictedMessage:
+      "Structured games suitable for autism spectrum learners.",
+  },
+  None: {
+    allowedGames: [
+      "imageReordering",
+      "quiz",
+      "spelling",
+      "drawing",
+      "pattern",
+      "audio",
+    ],
+    restrictedMessage: "All games available.",
+  },
+  Other: {
+    allowedGames: ["imageReordering", "quiz", "drawing"],
+    restrictedMessage: "Curated games for your learning needs.",
+  },
+};
+
 export function DrawingCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -24,6 +63,13 @@ export function DrawingCanvas() {
   const [selectedTag, setSelectedTag] = useState<string>("");
 
   const navigate = useNavigate();
+  const { user } = useUser();
+
+  // Get user's allowed games based on their disability
+  const userGameAccess =
+    user && user.disability
+      ? GAME_ACCESS[user.disability] || GAME_ACCESS["None"]
+      : GAME_ACCESS["None"];
 
   function fillWhiteBackground(
     ctx: CanvasRenderingContext2D,
@@ -154,9 +200,12 @@ export function DrawingCanvas() {
     }, "image/png");
   }
 
-  // ✅ Single unified function for handling topic clicks
+  // Unified function for handling topic clicks with disability filtering
   const handleTagClick = async (tagName: string) => {
     console.log(`🎯 Topic selected: ${tagName}`);
+    console.log(`👤 User: ${user?.name} (${user?.disability || "None"})`);
+    console.log(`🎮 Allowed games:`, userGameAccess.allowedGames);
+
     setSelectedTag(tagName);
     setGeneratingGames(true);
 
@@ -171,6 +220,8 @@ export function DrawingCanvas() {
           body: JSON.stringify({
             topic: tagName,
             age_group: "7-11",
+            user_disability: user?.disability || "None",
+            allowed_games: userGameAccess.allowedGames,
           }),
         }
       );
@@ -184,7 +235,7 @@ export function DrawingCanvas() {
 
       if (validation.success) {
         if (validation.games_exist) {
-          // ✅ Games exist in Firebase, use them directly
+          // Games exist in Firebase, use them directly
           console.log("✅ Using existing games from Firebase");
           navigate("/custom-games", {
             state: {
@@ -192,10 +243,13 @@ export function DrawingCanvas() {
               gameData: validation.games,
               images: validation.games.gallery?.images || null,
               source: "firebase",
+              userDisability: user?.disability || "None",
+              allowedGames: userGameAccess.allowedGames,
+              disabilityMessage: userGameAccess.restrictedMessage,
             },
           });
         } else {
-          // ❌ Games don't exist, generate new ones
+          // Games don't exist, generate new ones
           console.log("🎨 Generating new games and images...");
           const generateResponse = await fetch(
             "http://127.0.0.1:8000/generate-games",
@@ -205,6 +259,8 @@ export function DrawingCanvas() {
               body: JSON.stringify({
                 topic: tagName,
                 age_group: "7-11",
+                user_disability: user?.disability || "None",
+                allowed_games: userGameAccess.allowedGames,
               }),
             }
           );
@@ -223,6 +279,9 @@ export function DrawingCanvas() {
                 gameData: gameResult.games,
                 images: gameResult.images || null,
                 source: "generated",
+                userDisability: user?.disability || "None",
+                allowedGames: userGameAccess.allowedGames,
+                disabilityMessage: userGameAccess.restrictedMessage,
               },
             });
           } else {
@@ -244,6 +303,23 @@ export function DrawingCanvas() {
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
+      {/* User disability info display */}
+      {user && (
+        <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-600">🎯</span>
+            <span className="font-medium text-blue-900">Learning Profile:</span>
+            <span className="text-blue-700">
+              {user.disability || "General"}
+            </span>
+            <span className="text-blue-600">•</span>
+            <span className="text-blue-600 text-xs">
+              {userGameAccess.restrictedMessage}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <label className="text-sm">
           Color
@@ -298,7 +374,7 @@ export function DrawingCanvas() {
         />
       </div>
 
-      {/* ✅ Connection status indicator */}
+      {/* Connection status indicator */}
       <div className="mt-2 text-xs text-gray-500">
         Backend Status:
         <span className="ml-1 px-2 py-1 rounded text-white text-xs bg-green-500">
@@ -306,7 +382,7 @@ export function DrawingCanvas() {
         </span>
       </div>
 
-      {/* ✅ Loading state for game generation */}
+      {/* Loading state for game generation */}
       {generatingGames && (
         <div className="mt-3 p-3 rounded bg-yellow-100 border border-yellow-300">
           <div className="flex items-center">
@@ -314,12 +390,14 @@ export function DrawingCanvas() {
             <span className="text-yellow-800 text-sm font-medium">
               🎮{" "}
               {selectedTag
-                ? `Processing "${selectedTag}"...`
+                ? `Processing "${selectedTag}" for ${
+                    user?.disability || "general"
+                  } learning...`
                 : "Loading games..."}
             </span>
           </div>
           <p className="text-xs text-yellow-700 mt-1">
-            Checking database and generating content...
+            Generating games optimized for your learning profile...
           </p>
         </div>
       )}
@@ -363,7 +441,8 @@ export function DrawingCanvas() {
                     ))}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    💡 Click any topic above to start learning games!
+                    💡 Games will be customized for your{" "}
+                    {user?.disability || "general"} learning profile
                   </p>
                 </div>
               )}

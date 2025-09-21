@@ -12,7 +12,7 @@ interface UserData {
   email: string;
   name: string;
   age: number;
-  disability: string;
+  disability: "ADHD" | "Dyslexia" | "Visual" | "Autism" | "None" | "Other"; // ✅ Add proper typing
 }
 
 interface UserContextType {

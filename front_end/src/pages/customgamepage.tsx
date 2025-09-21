@@ -1,3 +1,4 @@
+import React from "react"; // ✅ Add this import
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { SpellingGame } from "../components/games/SpellingGame";
@@ -5,9 +6,56 @@ import { DrawingGame } from "../components/games/DrawingGame";
 import { ImageGalleryGame } from "../components/games/ImageGalleryGame";
 import GeneralKnowledgeGame from "../components/games/GeneralKnowledgeGame";
 import { useScore } from "../contexts/ScoreContext";
+import { useUser } from "../contexts/UserContext";
 import { celebrate } from "../App";
 
-// ✅ Updated interfaces for new structure
+// ✅ Define game access restrictions
+const GAME_ACCESS = {
+  ADHD: {
+    allowedGames: ["imageReordering", "quiz"],
+    restrictedMessage:
+      "Games focused on attention and logical thinking for ADHD learners.",
+  },
+  Dyslexia: {
+    allowedGames: ["spelling", "drawing", "imageReordering"],
+    restrictedMessage:
+      "Games focused on reading, phonics, and visual processing for dyslexic learners.",
+  },
+  Visual: {
+    allowedGames: ["quiz", "audio"],
+    restrictedMessage: "Audio-focused games for visual impairment support.",
+  },
+  Autism: {
+    allowedGames: ["drawing", "quiz", "pattern"],
+    restrictedMessage:
+      "Structured games suitable for autism spectrum learners.",
+  },
+  None: {
+    allowedGames: [
+      "imageReordering",
+      "quiz",
+      "spelling",
+      "drawing",
+      "pattern",
+      "audio",
+    ],
+    restrictedMessage: "All games available.",
+  },
+  Other: {
+    allowedGames: ["imageReordering", "quiz", "drawing"],
+    restrictedMessage: "Curated games for your learning needs.",
+  },
+};
+
+// ✅ Map game phases to game types
+const GAME_PHASE_TO_TYPE = {
+  spelling: "spelling",
+  drawing: "drawing",
+  gallery: "imageReordering",
+  gk: "quiz",
+};
+
+// ... rest of your interfaces remain the same ...
 interface NewGameData {
   spelling: { word: string; instructions: string };
   drawing: { word: string; instructions: string };
@@ -30,7 +78,6 @@ interface NewGameData {
   };
 }
 
-// ✅ Old structure for backward compatibility
 interface OldGameData {
   game1: { word: string };
   game2: { prompts: string[] };
@@ -60,10 +107,33 @@ function CustomGamePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { addPoints } = useScore();
+  const { user } = useUser();
 
+  // ✅ Get user's allowed games
+  const userGameAccess =
+    user && user.disability
+      ? GAME_ACCESS[user.disability] || GAME_ACCESS["None"]
+      : GAME_ACCESS["None"];
+
+  // ✅ Function to check if a game phase is allowed
+  const isGamePhaseAllowed = (phase: string): boolean => {
+    const gameType =
+      GAME_PHASE_TO_TYPE[phase as keyof typeof GAME_PHASE_TO_TYPE];
+    return userGameAccess.allowedGames.includes(gameType);
+  };
+
+  // ✅ Get allowed game phases in order
+  const getAllowedGamePhases = (): string[] => {
+    const allPhases = ["spelling", "drawing", "gallery", "gk"];
+    return allPhases.filter((phase) => isGamePhaseAllowed(phase));
+  };
+
+  const allowedPhases = getAllowedGamePhases();
+
+  // ✅ Start with the first allowed game phase
   const [gamePhase, setGamePhase] = useState<
     "spelling" | "drawing" | "gallery" | "gk" | "completed"
-  >("spelling");
+  >((allowedPhases[0] as any) || "completed");
 
   // ✅ Extract ALL data from navigation state
   const locationState = location.state || {};
@@ -72,14 +142,20 @@ function CustomGamePage() {
     gameData,
     images,
     source,
+    userDisability,
+    allowedGames,
+    disabilityMessage,
   }: {
     topic: string;
     gameData: NewGameData | OldGameData | string;
     images: ImageData | Array<any> | null;
     source?: string;
+    userDisability?: string;
+    allowedGames?: string[];
+    disabilityMessage?: string;
   } = locationState;
 
-  // ✅ Debug log to see what we received
+  // ✅ Debug log
   console.log("🎮 CustomGamePage received:", {
     topic,
     gameData: typeof gameData,
@@ -89,18 +165,18 @@ function CustomGamePage() {
       ? `Success with ${images.images?.length || 0} images`
       : "null",
     source,
+    userDisability: userDisability || user?.disability,
+    allowedPhases: allowedPhases.join(", "),
   });
 
-  // ✅ Normalize game data to new structure
+  // ... existing game data normalization code remains the same ...
   const normalizeGameData = (data: any): NewGameData | null => {
     if (!data) return null;
 
-    // If it's already new structure
     if (data.spelling && data.drawing && data.gallery && data.quiz) {
       return data as NewGameData;
     }
 
-    // If it's old structure, convert it
     if (data.game1 || data.game2 || data.game3 || data.game4) {
       const oldData = data as OldGameData;
       return {
@@ -113,7 +189,7 @@ function CustomGamePage() {
           instructions: `Draw each letter of the word`,
         },
         gallery: {
-          images: [], // Will be filled from images prop
+          images: [],
           instructions: `Explore images related to ${topic}`,
         },
         quiz: {
@@ -132,7 +208,6 @@ function CustomGamePage() {
     return null;
   };
 
-  // ✅ Parse gameData if it's a string
   let parsedGameData: NewGameData | null = null;
 
   if (typeof gameData === "string") {
@@ -154,7 +229,6 @@ function CustomGamePage() {
     parsedGameData = normalizeGameData(gameData);
   }
 
-  // ✅ Create fallback if parsing failed
   if (!parsedGameData) {
     console.log("🔧 Creating fallback game data");
     parsedGameData = {
@@ -183,7 +257,7 @@ function CustomGamePage() {
     };
   }
 
-  // ✅ Handle images - normalize different image formats
+  // ... existing image normalization code remains the same ...
   const normalizedImages = (() => {
     console.log("🔍 DEBUG: Processing images:");
     console.log("- images:", images);
@@ -194,10 +268,8 @@ function CustomGamePage() {
       parsedGameData?.gallery?.images
     );
 
-    // ✅ Handle Firebase Storage URLs (array format)
     if (Array.isArray(images) && images.length > 0) {
       console.log("📦 Processing array of images from Firebase Storage");
-
       return images.map((img, idx) => {
         console.log(`🔍 Image ${idx}:`, {
           has_url: !!img.url,
@@ -208,17 +280,13 @@ function CustomGamePage() {
           ),
         });
 
-        // ✅ Firebase Storage URLs can be used directly
         let imageUrl = img.url;
-
-        // Fallback to base64 if URL doesn't exist
         if (!imageUrl && img.image_base64) {
           imageUrl = img.image_base64.startsWith("data:")
             ? img.image_base64
             : `data:image/png;base64,${img.image_base64}`;
         }
 
-        // Final fallback
         if (!imageUrl) {
           console.log(`❌ No image data found for image ${idx}`);
           imageUrl = `data:image/svg+xml;base64,${btoa(
@@ -235,20 +303,16 @@ function CustomGamePage() {
       });
     }
 
-    // ✅ Handle gallery.images from parsedGameData (Firebase Storage URLs)
     if (
       parsedGameData?.gallery?.images &&
       Array.isArray(parsedGameData.gallery.images)
     ) {
       console.log("📦 Processing gallery.images from Firebase Storage");
-
       return parsedGameData.gallery.images.map((img, idx) => {
         console.log(
           `🖼️ Gallery Image ${idx}: URL=${img.url?.substring(0, 50)}...`
         );
-
         let imageUrl = img.url;
-
         if (!imageUrl && img.image_base64) {
           imageUrl = img.image_base64.startsWith("data:")
             ? img.image_base64
@@ -268,7 +332,6 @@ function CustomGamePage() {
       });
     }
 
-    // ✅ Handle generation result format (base64)
     if (images?.success && images.images) {
       console.log("📦 Processing generation result images");
       return images.images.map((img, idx) => ({
@@ -283,7 +346,6 @@ function CustomGamePage() {
     return null;
   })();
 
-  // Debug the final result
   console.log("🔍 Final normalizedImages:", normalizedImages);
   if (normalizedImages && normalizedImages.length > 0) {
     console.log("🔍 First image URL:", normalizedImages[0].url);
@@ -293,12 +355,55 @@ function CustomGamePage() {
     );
   }
 
-  // ✅ Add images to gallery if we have them
   if (normalizedImages && parsedGameData) {
     parsedGameData.gallery.images = normalizedImages;
   }
 
   const finalGameData = parsedGameData;
+
+  // ✅ Updated game completion handlers
+  const handleGameComplete = (currentPhase: string) => {
+    const currentIndex = allowedPhases.indexOf(currentPhase);
+    const nextIndex = currentIndex + 1;
+
+    // Award points based on game type
+    const points =
+      {
+        spelling: 10,
+        drawing: 15,
+        gallery: 5,
+        gk: 20,
+      }[currentPhase as keyof typeof points] || 10;
+
+    addPoints(points);
+
+    if (nextIndex < allowedPhases.length) {
+      // Move to next allowed game
+      setGamePhase(allowedPhases[nextIndex] as any);
+    } else {
+      // All allowed games completed
+      setGamePhase("completed");
+    }
+  };
+
+  const handleSpellingComplete = () => handleGameComplete("spelling");
+  const handleDrawingComplete = () => handleGameComplete("drawing");
+  const handleGalleryComplete = () => handleGameComplete("gallery");
+  const handleGKComplete = () => handleGameComplete("gk");
+
+  // ✅ Updated progress indicator
+  const getGameProgress = () => {
+    const currentIndex = allowedPhases.indexOf(gamePhase);
+    return allowedPhases.map((phase, index) => ({
+      phase,
+      status:
+        index < currentIndex
+          ? "completed"
+          : index === currentIndex
+          ? "current"
+          : "upcoming",
+    }));
+  };
 
   // Redirect if no data
   useEffect(() => {
@@ -307,6 +412,30 @@ function CustomGamePage() {
       navigate("/");
     }
   }, [topic, finalGameData, navigate]);
+
+  // ✅ Show message if no games are available
+  if (allowedPhases.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9] text-gray-900">
+        <div className="text-center max-w-md">
+          <h1 className="text-2xl font-bold mb-4">No Games Available</h1>
+          <p className="text-gray-600 mb-4">
+            No games are currently available for your learning profile (
+            {user?.disability || "General"}).
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            {userGameAccess.restrictedMessage}
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="rounded-md bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-500"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!topic || !finalGameData) {
     return (
@@ -328,28 +457,8 @@ function CustomGamePage() {
   }
 
   useEffect(() => {
-    if (gamePhase !== "spelling") celebrate();
+    if (gamePhase !== "spelling" && gamePhase !== "completed") celebrate();
   }, [gamePhase]);
-
-  const handleSpellingComplete = () => {
-    addPoints(10);
-    setGamePhase("drawing");
-  };
-
-  const handleDrawingComplete = () => {
-    addPoints(15);
-    setGamePhase("gallery");
-  };
-
-  const handleGalleryComplete = () => {
-    addPoints(5);
-    setGamePhase("gk");
-  };
-
-  const handleGKComplete = () => {
-    addPoints(20);
-    setGamePhase("completed");
-  };
 
   const getCurrentGameTitle = () => {
     switch (gamePhase) {
@@ -425,7 +534,13 @@ function CustomGamePage() {
               </span>
               <span>{getCurrentGameDescription()}</span>
 
-              {/* ✅ Show data source */}
+              {/* ✅ Show learning profile */}
+              {user?.disability && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                  👤 {user.disability} Profile
+                </span>
+              )}
+
               {source && (
                 <span
                   className={`px-2 py-1 rounded-full text-xs ${
@@ -440,7 +555,6 @@ function CustomGamePage() {
                 </span>
               )}
 
-              {/* ✅ Show image count */}
               {normalizedImages && normalizedImages.length > 0 && (
                 <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
                   🖼️ {normalizedImages.length} Images
@@ -448,81 +562,94 @@ function CustomGamePage() {
               )}
             </div>
 
+            {/* ✅ Updated progress indicator - only show allowed games */}
             <div className="flex items-center gap-2 mt-3">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  gamePhase === "spelling" ? "bg-blue-500" : "bg-green-500"
-                }`}
-              ></div>
-              <span className="text-xs">Spelling</span>
+              {getGameProgress().map((game, index) => (
+                <React.Fragment key={game.phase}>
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      game.status === "completed"
+                        ? "bg-green-500"
+                        : game.status === "current"
+                        ? "bg-blue-500"
+                        : "bg-gray-300"
+                    }`}
+                  ></div>
+                  <span
+                    className={`text-xs ${
+                      game.status === "current"
+                        ? "font-semibold text-blue-600"
+                        : ""
+                    }`}
+                  >
+                    {game.phase === "spelling"
+                      ? "Spelling"
+                      : game.phase === "drawing"
+                      ? "Drawing"
+                      : game.phase === "gallery"
+                      ? "Gallery"
+                      : "Quiz"}
+                  </span>
+                  {index < getGameProgress().length - 1 && (
+                    <span className="text-gray-300">→</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
 
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  gamePhase === "drawing"
-                    ? "bg-blue-500"
-                    : ["gallery", "gk", "completed"].includes(gamePhase)
-                    ? "bg-green-500"
-                    : "bg-gray-300"
-                }`}
-              ></div>
-              <span className="text-xs">Drawing</span>
-
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  gamePhase === "gallery"
-                    ? "bg-blue-500"
-                    : ["gk", "completed"].includes(gamePhase)
-                    ? "bg-green-500"
-                    : "bg-gray-300"
-                }`}
-              ></div>
-              <span className="text-xs">Gallery</span>
-
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  gamePhase === "gk"
-                    ? "bg-blue-500"
-                    : gamePhase === "completed"
-                    ? "bg-green-500"
-                    : "bg-gray-300"
-                }`}
-              ></div>
-              <span className="text-xs">Quiz</span>
+            {/* ✅ Show restricted message */}
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-xs text-yellow-800">
+                <span className="font-medium">Learning Profile:</span>{" "}
+                {userGameAccess.restrictedMessage}
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                Playing {allowedPhases.length} out of 4 available games
+              </p>
             </div>
           </div>
 
           <div className="rounded-lg border border-gray-200 p-6 bg-[#f1f5f9] shadow-2xl">
-            {gamePhase === "spelling" && finalGameData?.spelling && (
-              <SpellingGame
-                topic={topic}
-                word={finalGameData.spelling.word}
-                onGameComplete={handleSpellingComplete}
-              />
-            )}
+            {/* ✅ Only render games that are allowed */}
+            {gamePhase === "spelling" &&
+              isGamePhaseAllowed("spelling") &&
+              finalGameData?.spelling && (
+                <SpellingGame
+                  topic={topic}
+                  word={finalGameData.spelling.word}
+                  onGameComplete={handleSpellingComplete}
+                />
+              )}
 
-            {gamePhase === "drawing" && finalGameData?.drawing && (
-              <DrawingGame
-                topic={topic}
-                word={finalGameData.drawing.word}
-                onGameComplete={handleDrawingComplete}
-              />
-            )}
+            {gamePhase === "drawing" &&
+              isGamePhaseAllowed("drawing") &&
+              finalGameData?.drawing && (
+                <DrawingGame
+                  topic={topic}
+                  word={finalGameData.drawing.word}
+                  onGameComplete={handleDrawingComplete}
+                />
+              )}
 
-            {gamePhase === "gallery" && finalGameData?.gallery && (
-              <ImageGalleryGame
-                topic={topic}
-                images={finalGameData.gallery.images || null}
-                onGameComplete={handleGalleryComplete}
-              />
-            )}
+            {gamePhase === "gallery" &&
+              isGamePhaseAllowed("gallery") &&
+              finalGameData?.gallery && (
+                <ImageGalleryGame
+                  topic={topic}
+                  images={finalGameData.gallery.images || null}
+                  onGameComplete={handleGalleryComplete}
+                />
+              )}
 
-            {gamePhase === "gk" && finalGameData?.quiz && (
-              <GeneralKnowledgeGame
-                topic={topic}
-                onGameComplete={handleGKComplete} // ✅ Fixed function name
-                gameData={finalGameData.quiz} // ✅ Use finalGameData instead of gameData
-              />
-            )}
+            {gamePhase === "gk" &&
+              isGamePhaseAllowed("gk") &&
+              finalGameData?.quiz && (
+                <GeneralKnowledgeGame
+                  topic={topic}
+                  onGameComplete={handleGKComplete}
+                  gameData={finalGameData.quiz}
+                />
+              )}
 
             {gamePhase === "completed" && (
               <div className="text-center py-8">
@@ -531,33 +658,83 @@ function CustomGamePage() {
                   Amazing Work!
                 </h2>
                 <p className="text-gray-500 mb-6">
-                  You completed all games for the topic "{topic}" that you drew!
+                  You completed all available games for the topic "{topic}" in
+                  your learning profile!
                 </p>
 
+                {/* ✅ Show only completed games */}
                 <div className="grid grid-cols-2 gap-4 mb-6 max-w-md mx-auto">
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">🔤</div>
-                    <div className="text-sm text-gray-600">Spelling</div>
-                    <div className="text-lg font-semibold">+10 pts</div>
-                  </div>
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">🎨</div>
-                    <div className="text-sm text-gray-600">Drawing</div>
-                    <div className="text-lg font-semibold">+15 pts</div>
-                  </div>
-                  <div className="bg-purple-50 p-3 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">🖼️</div>
-                    <div className="text-sm text-gray-600">Gallery</div>
-                    <div className="text-lg font-semibold">+5 pts</div>
-                  </div>
-                  <div className="bg-orange-50 p-3 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">🧠</div>
-                    <div className="text-sm text-gray-600">Quiz</div>
-                    <div className="text-lg font-semibold">+20 pts</div>
-                  </div>
+                  {allowedPhases.map((phase) => {
+                    const gameInfo = {
+                      spelling: {
+                        icon: "🔤",
+                        name: "Spelling",
+                        points: 10,
+                        color: "blue",
+                      },
+                      drawing: {
+                        icon: "🎨",
+                        name: "Drawing",
+                        points: 15,
+                        color: "green",
+                      },
+                      gallery: {
+                        icon: "🖼️",
+                        name: "Gallery",
+                        points: 5,
+                        color: "purple",
+                      },
+                      gk: {
+                        icon: "🧠",
+                        name: "Quiz",
+                        points: 20,
+                        color: "orange",
+                      },
+                    }[phase];
+
+                    if (!gameInfo) return null;
+
+                    return (
+                      <div
+                        key={phase}
+                        className={`bg-${gameInfo.color}-50 p-3 rounded-lg`}
+                      >
+                        <div
+                          className={`text-2xl font-bold text-${gameInfo.color}-600`}
+                        >
+                          {gameInfo.icon}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {gameInfo.name}
+                        </div>
+                        <div className="text-lg font-semibold">
+                          +{gameInfo.points} pts
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* ✅ Show generated images */}
+                {/* ✅ Show learning profile summary */}
+                <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                  <h3 className="font-semibold mb-2">
+                    📚 Learning Profile Summary
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Profile:{" "}
+                    <span className="font-medium">
+                      {user?.disability || "General"}
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Games Completed:{" "}
+                    <span className="font-medium">{allowedPhases.length}</span>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {userGameAccess.restrictedMessage}
+                  </p>
+                </div>
+
                 {normalizedImages && normalizedImages.length > 0 && (
                   <div className="bg-green-50 p-4 rounded-lg mb-6">
                     <h3 className="font-semibold mb-2">
