@@ -1,1 +1,8 @@
 __pycache__/
+.env
+back_end/.env
+front_end/.env
+.DS_Store
+node_modules/
+dist/
+build/

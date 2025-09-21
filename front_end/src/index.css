@@ -5,29 +5,30 @@
 /* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind utilities;
 
-:root {
-  color-scheme: light dark;
-  --color-bg: #ffffff;
-  --color-text: #000000;
-}
-
-html, body, #root {
+html,
+body,
+#root {
   min-height: 100vh;
   background: linear-gradient(120deg, #e0f7fa 0%, #fce4ec 100%);
-  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+  font-family: "Nunito", "Segoe UI", Arial, sans-serif;
   transition: background 0.5s;
 }
 
 .bubble.curiosity-bubble {
-  animation: curiosity-pop 1.2s cubic-bezier(.17,.67,.83,.67) forwards;
+  animation: curiosity-pop 1.2s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
 }
 
 @keyframes curiosity-pop {
-  0% { transform: scale(0.2); opacity: 0.2; }
-  60% { transform: scale(1.2); opacity: 0.8; }
-  100% { transform: scale(1.6); opacity: 0; }
+  0% {
+    transform: scale(0.2);
+    opacity: 0.2;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
-
-
-
-

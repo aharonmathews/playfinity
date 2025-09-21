@@ -1,298 +1,291 @@
-  const navigateHome = () => window.location.href = '/';
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from "react";
 
 type Props = {
-  topic: string
-  onGameComplete?: () => void
-}
+  topic: string;
+  onGameComplete?: () => void;
+  word?: string; // ✅ The word from game1 (spelling game)
+  prompts?: string[]; // ✅ Dynamic prompts from JSON (fallback)
+};
 
-export function DrawingGame({ topic, onGameComplete }: Props) {
-  const word = useMemo(() => (topic || 'TOPIC').toUpperCase().replace(/[^A-Z]/g, ''), [topic])
-  const [index, setIndex] = useState(0)
-  const [score, setScore] = useState(0)
-  const [feedback, setFeedback] = useState<null | 'correct' | 'wrong'>(null)
-  const [message, setMessage] = useState<string>('')
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [color, setColor] = useState('#000000')
-  const [brush, setBrush] = useState(3)
-  const [isEraser, setIsEraser] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+export function DrawingGame({ topic, onGameComplete, word, prompts }: Props) {
+  const [currentLetterIndex, setCurrentLetterIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState<null | "correct" | "wrong">(null);
+  const [message, setMessage] = useState<string>("");
+  const [isDrawing, setIsDrawing] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const currentChar = word[index] || ''
+  // ✅ Use the word from spelling game, or topic name, or fallback prompts
+  const gameWord =
+    word || topic.toUpperCase().replace(/[^A-Z]/g, "") || "HEART";
+  const letters = gameWord.split("");
+  const currentLetter = letters[currentLetterIndex] || "H";
+
+  // ✅ If no word provided, fall back to concept prompts
+  const shouldDrawLetters = word || !prompts;
+
+  const navigateHome = () => (window.location.href = "/");
+
   const uploadDrawing = async () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    // Convert canvas to Base64 PNG
-    const imageData = canvas.toDataURL("image/png")
+    const imageData = canvas.toDataURL("image/png");
 
     try {
       const response = await fetch("http://127.0.0.1:8000/upload/", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           image: imageData,
-          label: currentChar   // optional, store which letter was drawn
-        })
-      })
+          label: shouldDrawLetters
+            ? `Letter ${currentLetter}`
+            : `Concept: ${prompts?.[currentLetterIndex]}`,
+        }),
+      });
 
       if (response.ok) {
-        const data = await response.json()
-        console.log("Image saved successfully:", data)
-        alert("Drawing saved to backend ✅")
+        const data = await response.json();
+        console.log("Image saved successfully:", data);
+        alert("Drawing saved to backend ✅");
       } else {
-        console.error("Failed to upload:", response.statusText)
-        alert("Upload failed ❌")
+        console.error("Failed to upload:", response.statusText);
+        alert("Upload failed ❌");
       }
     } catch (err) {
-      console.error("Error uploading drawing:", err)
-      alert("Error while uploading ❌")
+      console.error("Error uploading drawing:", err);
+      alert("Error while uploading ❌");
     }
-  }
-  // Simple character recognition based on drawing patterns
-  const recognizeCharacter = (drawnData: ImageData): boolean => {
-    // This is a simplified demo recognition
-    // In a real app, you'd use machine learning or more sophisticated algorithms
-    
-    const data = drawnData.data
-    let hasDrawing = false
-    let drawingPixels = 0
-    
+  };
+
+  // ✅ Letter recognition (simplified)
+  const validateLetterDrawing = (drawnData: ImageData): boolean => {
+    const data = drawnData.data;
+    let drawingPixels = 0;
+
     // Count non-transparent pixels
     for (let i = 3; i < data.length; i += 4) {
-      if (data[i] > 0) { // alpha > 0
-        hasDrawing = true
-        drawingPixels++
+      if (data[i] > 0) {
+        // alpha > 0
+        drawingPixels++;
       }
     }
-    
-    // Basic validation: must have substantial drawing
-    if (!hasDrawing || drawingPixels < 100) {
-      return false
-    }
-    
-    // For demo purposes, we'll use a simple pattern-based recognition
-    // Check if the drawing has some basic structure (not just random scribbles)
-    const width = drawnData.width
-    const height = drawnData.height
-    
-    // Check for vertical lines (common in letters like A, B, C, D, etc.)
-    let verticalLines = 0
-    for (let x = 0; x < width; x++) {
-      let lineLength = 0
-      for (let y = 0; y < height; y++) {
-        const idx = (y * width + x) * 4
-        if (data[idx + 3] > 0) { // alpha > 0
-          lineLength++
-        } else {
-          if (lineLength > height * 0.3) { // Line covers at least 30% of height
-            verticalLines++
-          }
-          lineLength = 0
-        }
-      }
-      if (lineLength > height * 0.3) {
-        verticalLines++
+
+    // Must have substantial drawing (at least 100 pixels for a letter)
+    return drawingPixels >= 100;
+  };
+
+  // ✅ General drawing validation
+  const validateConceptDrawing = (drawnData: ImageData): boolean => {
+    const data = drawnData.data;
+    let drawingPixels = 0;
+
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > 0) {
+        drawingPixels++;
       }
     }
-    
-    // Check for horizontal lines
-    let horizontalLines = 0
-    for (let y = 0; y < height; y++) {
-      let lineLength = 0
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * 4
-        if (data[idx + 3] > 0) { // alpha > 0
-          lineLength++
-        } else {
-          if (lineLength > width * 0.3) { // Line covers at least 30% of width
-            horizontalLines++
-          }
-          lineLength = 0
-        }
-      }
-      if (lineLength > width * 0.3) {
-        horizontalLines++
-      }
-    }
-    
-    // Check for diagonal lines (for letters like A, V, W, X, Y, Z)
-    let diagonalLines = 0
-    // Check diagonal from top-left to bottom-right
-    for (let i = 0; i < Math.min(width, height); i++) {
-      const idx = (i * width + i) * 4
-      if (data[idx + 3] > 0) {
-        diagonalLines++
-      }
-    }
-    // Check diagonal from top-right to bottom-left
-    for (let i = 0; i < Math.min(width, height); i++) {
-      const idx = (i * width + (width - 1 - i)) * 4
-      if (data[idx + 3] > 0) {
-        diagonalLines++
-      }
-    }
-    
-    // Check for curves (for letters like C, D, G, O, P, Q, S)
-    let curvePixels = 0
-    const centerX = width / 2
-    const centerY = height / 2
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        const idx = (y * width + x) * 4
-        if (data[idx + 3] > 0) {
-          const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
-          const radius = Math.min(width, height) / 3
-          if (Math.abs(distance - radius) < radius * 0.3) {
-            curvePixels++
-          }
-        }
-      }
-    }
-    
-    // Simple scoring system
-    let score = 0
-    if (verticalLines >= 1) score += 2
-    if (horizontalLines >= 1) score += 2
-    if (diagonalLines >= Math.min(width, height) * 0.2) score += 2
-    if (curvePixels >= 20) score += 2
-    
-    // Must have at least some structure to be considered "correct"
-    return score >= 2 && drawingPixels >= 100
-  }
+
+    return drawingPixels >= 150; // Slightly higher threshold for concepts
+  };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true)
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
-    const ctx = canvas.getContext('2d')
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.beginPath()
-      ctx.moveTo(x, y)
+      ctx.beginPath();
+      ctx.moveTo(x, y);
     }
-  }
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
-    
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
-    const ctx = canvas.getContext('2d')
+    if (!isDrawing) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.lineTo(x, y)
-      ctx.strokeStyle = isEraser ? '#ffffff' : color
-      ctx.lineWidth = brush
-      ctx.lineCap = 'round'
-      ctx.globalCompositeOperation = 'source-over'
-      ctx.stroke()
+      ctx.lineTo(x, y);
+      ctx.stroke();
     }
-  }
+  };
 
   const handleMouseUp = () => {
-    setIsDrawing(false)
-  }
+    setIsDrawing(false);
+  };
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const ctx = canvas.getContext('2d')
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-  }
+  };
 
   const checkDrawing = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const isCorrect = recognizeCharacter(imageData)
-    
-    if (isCorrect) {
-      setFeedback('correct')
-      setMessage('Correct! Well done!')
-      setScore((s) => s + 1)
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // ✅ Use appropriate validation based on mode
+    const isValid = shouldDrawLetters
+      ? validateLetterDrawing(imageData)
+      : validateConceptDrawing(imageData);
+
+    if (isValid) {
+      setFeedback("correct");
+      setMessage(
+        shouldDrawLetters
+          ? `Great job drawing the letter "${currentLetter}"!`
+          : "Excellent drawing!"
+      );
+      setScore((s) => s + 1);
+
       setTimeout(() => {
-        setFeedback(null)
-        setMessage('')
-        clearCanvas()
-        if (index < word.length - 1) {
-          setIndex((i) => i + 1)
+        setFeedback(null);
+        setMessage("");
+        clearCanvas();
+
+        const maxIndex = shouldDrawLetters
+          ? letters.length
+          : prompts?.length || 1;
+
+        if (currentLetterIndex < maxIndex - 1) {
+          setCurrentLetterIndex((i) => i + 1);
         } else {
-          // Game completed!
-          onGameComplete?.()
+          // All letters/prompts completed!
+          onGameComplete?.();
         }
-      }, 1500)
+      }, 1500);
     } else {
-      setFeedback('wrong')
-      setMessage('Not quite right. Try again!')
+      setFeedback("wrong");
+      setMessage(
+        shouldDrawLetters
+          ? `Try drawing the letter "${currentLetter}" more clearly!`
+          : "Please draw something more substantial!"
+      );
       setTimeout(() => {
-        setFeedback(null)
-        setMessage('')
-      }, 1500)
+        setFeedback(null);
+        setMessage("");
+      }, 1500);
     }
-  }
+  };
 
   // Initialize canvas
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    
-  ctx.strokeStyle = color
-  ctx.lineWidth = brush
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  }, [])
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  if (!word) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">Select a topic to start the game.</div>
-  }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-  const progress = word.length ? Math.round(((index + 1) / word.length) * 100) : 0
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, []);
+
+  // ✅ Calculate progress based on mode
+  const totalSteps = shouldDrawLetters ? letters.length : prompts?.length || 1;
+  const progress = Math.round(((currentLetterIndex + 1) / totalSteps) * 100);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-  <div className="text-sm text-gray-500">Character {index + 1} of {word.length}</div>
+        <div className="text-sm text-gray-500">
+          {shouldDrawLetters
+            ? `Letter ${currentLetterIndex + 1} of ${letters.length}`
+            : `Step ${currentLetterIndex + 1} of ${prompts?.length || 1}`}
+        </div>
         <div className="text-sm font-medium">Score: {score}</div>
       </div>
 
-  <div className="h-2 bg-gray-200 rounded">
-        <div className="h-2 bg-emerald-600 rounded" style={{ width: `${progress}%` }} />
+      <div className="h-2 bg-gray-200 rounded">
+        <div
+          className="h-2 bg-emerald-600 rounded"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       <div className="text-center">
-  <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Draw the letter: <span className="text-4xl text-indigo-600">{currentChar}</span>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Topic: <span className="text-indigo-600">{topic}</span>
         </h2>
-  <p className="text-sm text-gray-500">
-          Use your mouse to draw the letter in the canvas below
-        </p>
+
+        {shouldDrawLetters ? (
+          // ✅ Letter Drawing Mode
+          <div className="space-y-3">
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="text-lg font-medium text-yellow-800 mb-2">
+                Draw the letter:
+              </p>
+              <div className="text-6xl font-bold text-indigo-600 tracking-wider">
+                {currentLetter}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                Word: <span className="font-semibold">{gameWord}</span>
+                <span className="ml-2">
+                  ({currentLetterIndex + 1}/{letters.length})
+                </span>
+              </p>
+              <div className="text-lg tracking-widest mt-1">
+                {letters.map((letter, idx) => (
+                  <span
+                    key={idx}
+                    className={
+                      idx === currentLetterIndex
+                        ? "text-indigo-600 underline font-bold"
+                        : idx < currentLetterIndex
+                        ? "text-green-600 font-bold"
+                        : "text-gray-400"
+                    }
+                  >
+                    {letter}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          // ✅ Concept Drawing Mode (fallback)
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <p className="text-lg font-medium text-blue-800">
+              {prompts?.[currentLetterIndex] ||
+                `Draw something related to ${topic}`}
+            </p>
+          </div>
+        )}
       </div>
 
       {message && (
-        <div className={`text-center py-2 text-lg font-medium ${
-          feedback === 'correct' ? 'text-emerald-600' : 'text-red-600'
-        }`}>
+        <div
+          className={`text-center py-2 text-lg font-medium ${
+            feedback === "correct" ? "text-emerald-600" : "text-red-600"
+          }`}
+        >
           {message}
         </div>
       )}
@@ -301,10 +294,9 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
         <div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
           <canvas
             ref={canvasRef}
-            width={300}
-            height={200}
-            className="border border-gray-200 rounded"
-            style={isEraser ? { cursor: `url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'${brush * 2}\' height=\'${brush * 2}\'><circle cx=\'${brush}\' cy=\'${brush}\' r=\'${brush}\' fill=\'white\' stroke=\'gray\' stroke-width=\'2\'/></svg>') ${brush} ${brush}, pointer` } : { cursor: 'crosshair' }}
+            width={400}
+            height={300}
+            className="border border-gray-200 rounded cursor-crosshair"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -315,22 +307,13 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
 
       <div className="flex justify-center gap-4">
         <div className="absolute top-6 right-6 z-50">
-          <button onClick={navigateHome} className="rounded bg-indigo-600 text-white px-4 py-2 shadow-lg hover:bg-indigo-700">Home</button>
+          <button
+            onClick={navigateHome}
+            className="rounded bg-indigo-600 text-white px-4 py-2 shadow-lg hover:bg-indigo-700"
+          >
+            Home
+          </button>
         </div>
-        <label className="text-sm">Color
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="ml-2 align-middle" disabled={isEraser} />
-        </label>
-        <label className="text-sm">{isEraser ? 'Eraser Size' : 'Brush'}
-          <input type="range" min={4} max={48} value={brush} onChange={(e) => setBrush(Number(e.target.value))} className="ml-2 align-middle" />
-          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{brush}px</span>
-        </label>
-        <button
-          type="button"
-          onClick={() => setIsEraser(e => !e)}
-          className={`rounded border px-3 py-1 text-sm ${isEraser ? 'bg-yellow-200' : ''} hover:bg-gray-50 dark:hover:bg-gray-900`}
-        >
-          {isEraser ? 'Eraser (On)' : 'Eraser'}
-        </button>
         <button
           onClick={clearCanvas}
           className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
@@ -342,9 +325,9 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
           disabled={feedback !== null}
           className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Check Drawing
+          Submit Letter
         </button>
-         <button
+        <button
           onClick={uploadDrawing}
           className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
@@ -352,16 +335,30 @@ export function DrawingGame({ topic, onGameComplete }: Props) {
         </button>
       </div>
 
-  <div className="text-center text-sm text-gray-500">
-        <p>Draw the letter <strong>{currentChar}</strong> in the canvas above</p>
-        <p>Click "Check Drawing" when you're done</p>
-        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-xs">
-          <p className="font-medium text-blue-800 dark:text-blue-200">Drawing Tips:</p>
-          <p>• Draw clear lines and shapes</p>
-          <p>• Make sure your drawing covers enough of the canvas</p>
-          <p>• Try to match the letter structure (lines, curves, etc.)</p>
-        </div>
+      <div className="text-center text-sm text-gray-500">
+        {shouldDrawLetters ? (
+          <div>
+            <p>
+              Draw the letter <strong>{currentLetter}</strong> clearly in the
+              canvas above
+            </p>
+            <p>Try to make it as recognizable as possible!</p>
+            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-xs">
+              <p className="font-medium text-blue-800 dark:text-blue-200">
+                Letter Drawing Tips:
+              </p>
+              <p>• Draw the letter large and clear</p>
+              <p>• Use proper letter formation</p>
+              <p>• Make sure lines connect properly</p>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p>Follow the prompt above and draw in the canvas</p>
+            <p>Click "Submit Drawing" when you're done</p>
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 }
