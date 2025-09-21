@@ -21,11 +21,11 @@ endpoint = "https://aharondecode.cognitiveservices.azure.com/"
 analyze_url = endpoint + "vision/v3.2/analyze"
 params = {"visualFeatures": "Description,Tags,Objects"}
 
-# --- OpenAI/Llama Configuration ---
-openai_api_key = os.getenv("OPENAI_API_KEY")  # Changed to use env variable
+# --- OpenRouter/Llama Configuration ---
+openrouter_api_key = os.getenv("OPENAI_API_KEY")  # Reusing the same env variable
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key=openai_api_key,  # Use env variable
+    api_key=openrouter_api_key,
 )
 
 # --- FastAPI Setup ---
@@ -128,6 +128,7 @@ async def analyze_image(file: UploadFile):
     return response.json()
 
 # Core function for game generation
+# Core function for game generation
 def generate_games(topic, age_group):
     prompt = f"""
 You are an educational assistant. 
@@ -172,10 +173,14 @@ Return ONLY valid JSON without any markdown formatting or explanation:
 
     try:
         response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct:free",
+            model="meta-llama/llama-4-maverick:free",  # Updated to use Llama 4 Maverick
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1000,
-            temperature=0.7
+            temperature=0.7,
+            extra_headers={
+                "HTTP-Referer": "https://playfinity.app",  # Optional for rankings
+                "X-Title": "Playfinity Educational Games",  # Optional for rankings
+            }
         )
 
         raw_response = response.choices[0].message.content
@@ -194,7 +199,6 @@ Return ONLY valid JSON without any markdown formatting or explanation:
     except Exception as e:
         print(f"Error in generate_games: {e}")
         return create_fallback_games(topic)
-
 # --- API Endpoints ---
 
 @app.get("/")
