@@ -8,16 +8,26 @@ import GeneralKnowledgeGame from "../components/games/GeneralKnowledgeGame";
 import { useScore } from "../contexts/ScoreContext";
 import { useUser } from "../contexts/UserContext";
 import { celebrate } from "../App";
+import TypeQuestGame from "../components/games/TypeQuestGame";
+import WordWrestleGame from "../components/games/WordWrestleGame";
+import RhymeRoundupGame from "../components/games/RhymeRoundupGame";
+import SyllableSplitterGame from "../components/games/SyllableSplitterGame";
 
 // Game access restrictions
 const GAME_ACCESS = {
   ADHD: {
-    allowedGames: ["imageReordering", "quiz"],
+    allowedGames: ["imageReordering", "quiz", "typequest", "wordwrestle"], // ✅ Added new games
     restrictedMessage:
       "Games focused on attention and logical thinking for ADHD learners.",
   },
   Dyslexia: {
-    allowedGames: ["spelling", "drawing", "imageReordering"],
+    allowedGames: [
+      "spelling",
+      "drawing",
+      "imageReordering",
+      "rhyming",
+      "syllable",
+    ], // ✅ Added new games
     restrictedMessage:
       "Games focused on reading, phonics, and visual processing for dyslexic learners.",
   },
@@ -38,6 +48,10 @@ const GAME_ACCESS = {
       "drawing",
       "pattern",
       "audio",
+      "typequest", // ✅ Available for general users
+      "wordwrestle", // ✅ Available for general users
+      "rhyming", // ✅ Available for general users
+      "syllable", // ✅ Available for general users
     ],
     restrictedMessage: "All games available.",
   },
@@ -52,6 +66,10 @@ const GAME_PHASE_TO_TYPE = {
   drawing: "drawing",
   gallery: "imageReordering",
   gk: "quiz",
+  typequest: "typequest", // ✅ New ADHD game
+  wordwrestle: "wordwrestle", // ✅ New ADHD game
+  rhyming: "rhyming", // ✅ New Dyslexia game
+  syllable: "syllable", // ✅ New Dyslexia game
 };
 
 // ... existing interfaces ...
@@ -219,14 +237,50 @@ function CustomGamePage() {
   };
 
   const getAllowedGamePhases = (): string[] => {
-    const allPhases = ["spelling", "drawing", "gallery", "gk"];
-    return allPhases.filter((phase) => isGamePhaseAllowed(phase));
+    // Define the complete game sequences for each disability
+    const gameSequences = {
+      ADHD: ["gallery", "gk", "typequest", "wordwrestle"], // ✅ 4 games for ADHD
+      Dyslexia: ["spelling", "drawing", "gallery", "rhyming", "syllable"], // ✅ 5 games for Dyslexia
+      Visual: ["gk"], // Only quiz games for visual impairment
+      Autism: ["drawing", "gk"], // Structured games
+      None: [
+        "spelling",
+        "drawing",
+        "gallery",
+        "gk",
+        "typequest",
+        "wordwrestle",
+        "rhyming",
+        "syllable",
+      ], // All games
+      Other: ["gallery", "gk", "drawing"], // Curated selection
+    };
+
+    // Get the sequence for the user's disability
+    const userDisability = user?.disability || "None";
+    const sequence = gameSequences[userDisability] || gameSequences["None"];
+
+    // Filter to only include games that are actually allowed
+    return sequence.filter((phase) => isGamePhaseAllowed(phase));
   };
+
+  const handleTypeQuestComplete = () => handleGameComplete("typequest");
+  const handleWordWrestleComplete = () => handleGameComplete("wordwrestle");
+  const handleRhymingComplete = () => handleGameComplete("rhyming");
+  const handleSyllableComplete = () => handleGameComplete("syllable");
 
   const allowedPhases = getAllowedGamePhases();
 
   const [gamePhase, setGamePhase] = useState<
-    "spelling" | "drawing" | "gallery" | "gk" | "completed"
+    | "spelling"
+    | "drawing"
+    | "gallery"
+    | "gk"
+    | "typequest"
+    | "wordwrestle"
+    | "rhyming"
+    | "syllable"
+    | "completed"
   >((allowedPhases[0] as any) || "completed");
 
   const locationState = location.state || {};
@@ -405,6 +459,10 @@ function CustomGamePage() {
         drawing: 15,
         gallery: 5,
         gk: 20,
+        typequest: 15, // ✅ New
+        wordwrestle: 20, // ✅ New
+        rhyming: 12, // ✅ New
+        syllable: 14, // ✅ New
       }[currentPhase as keyof typeof points] || 10;
 
     addPoints(points);
@@ -430,12 +488,20 @@ function CustomGamePage() {
         drawing: "🎨",
         gallery: "🖼️",
         gk: "🧠",
+        typequest: "⌨️", // ✅ New icon
+        wordwrestle: "🤼", // ✅ New icon
+        rhyming: "🎵", // ✅ New icon
+        syllable: "✂️", // ✅ New icon
       }[phase],
       name: {
         spelling: "Spelling",
         drawing: "Drawing",
         gallery: "Gallery",
         gk: "Quiz",
+        typequest: "Type Quest", // ✅ New name
+        wordwrestle: "Word Wrestle", // ✅ New name
+        rhyming: "Rhyming", // ✅ New name
+        syllable: "Syllables", // ✅ New name
       }[phase],
       status:
         index < currentIndex
@@ -458,6 +524,10 @@ function CustomGamePage() {
       drawing: "Creative Drawing",
       gallery: "Image Discovery",
       gk: "Knowledge Quiz",
+      typequest: "Type Quest Adventure", // ✅ New title
+      wordwrestle: "Word Wrestling Match", // ✅ New title
+      rhyming: "Rhyming Words Game", // ✅ New title
+      syllable: "Syllable Splitter", // ✅ New title
       completed: "Mission Complete!",
     };
     return titles[gamePhase] || "Learning Game";
@@ -477,6 +547,10 @@ function CustomGamePage() {
       gk:
         finalGameData?.quiz?.instructions ||
         `Test your knowledge about "${topic}"`,
+      typequest: `Fast-paced typing adventure focused on "${topic}"`, // ✅ New description
+      wordwrestle: `Wrestling match with words related to "${topic}"`, // ✅ New description
+      rhyming: `Find rhyming patterns and sounds in "${topic}" words`, // ✅ New description
+      syllable: `Break down and rebuild words about "${topic}"`, // ✅ New description
       completed: `Congratulations! You've mastered "${topic}"!`,
     };
     return descriptions[gamePhase] || "";
@@ -694,10 +768,19 @@ function CustomGamePage() {
                 </div>
                 <p className={`text-sm ${theme.textSecondary} mb-2`}>
                   <strong>Profile:</strong> {user?.disability || "General"} •{" "}
-                  <strong>Available Games:</strong> {allowedPhases.length}/4
+                  <strong>Available Games:</strong> {allowedPhases.length}/
+                  {user?.disability === "ADHD"
+                    ? "4"
+                    : user?.disability === "Dyslexia"
+                    ? "5"
+                    : "8"}
                 </p>
                 <p className={`text-xs ${theme.textMuted}`}>
                   {userGameAccess.restrictedMessage}
+                  {user?.disability === "ADHD" &&
+                    " Focus & attention games included in sequence."}
+                  {user?.disability === "Dyslexia" &&
+                    " Reading & language games included in sequence."}
                 </p>
               </div>
             </div>
@@ -748,6 +831,36 @@ function CustomGamePage() {
                 />
               )}
 
+            {gamePhase === "typequest" && isGamePhaseAllowed("typequest") && (
+              <TypeQuestGame
+                topic={topic}
+                onGameComplete={handleTypeQuestComplete}
+              />
+            )}
+
+            {gamePhase === "wordwrestle" &&
+              isGamePhaseAllowed("wordwrestle") && (
+                <WordWrestleGame
+                  topic={topic}
+                  onGameComplete={handleWordWrestleComplete}
+                />
+              )}
+
+            {/* ✅ NEW DYSLEXIA GAMES */}
+            {gamePhase === "rhyming" && isGamePhaseAllowed("rhyming") && (
+              <RhymeRoundupGame
+                topic={topic}
+                onGameComplete={handleRhymingComplete}
+              />
+            )}
+
+            {gamePhase === "syllable" && isGamePhaseAllowed("syllable") && (
+              <SyllableSplitterGame
+                topic={topic}
+                onGameComplete={handleSyllableComplete}
+              />
+            )}
+
             {gamePhase === "completed" && (
               <div className="text-center py-12">
                 <div className="text-8xl mb-6 animate-bounce">🎉</div>
@@ -791,6 +904,30 @@ function CustomGamePage() {
                         points: 20,
                         color: "orange",
                       },
+                      typequest: {
+                        icon: "⌨️",
+                        name: "Type Quest",
+                        points: 15,
+                        color: "emerald",
+                      }, // ✅ New
+                      wordwrestle: {
+                        icon: "🤼",
+                        name: "Word Wrestle",
+                        points: 20,
+                        color: "teal",
+                      }, // ✅ New
+                      rhyming: {
+                        icon: "🎵",
+                        name: "Rhyming",
+                        points: 12,
+                        color: "pink",
+                      }, // ✅ New
+                      syllable: {
+                        icon: "✂️",
+                        name: "Syllables",
+                        points: 14,
+                        color: "cyan",
+                      }, // ✅ New
                     }[phase];
 
                     if (!gameInfo) return null;
@@ -834,7 +971,12 @@ function CustomGamePage() {
                       </p>
                       <p className={`${theme.textSecondary} text-sm`}>
                         <strong>Games Completed:</strong> {allowedPhases.length}
-                        /4
+                        /
+                        {user?.disability === "ADHD"
+                          ? "4"
+                          : user?.disability === "Dyslexia"
+                          ? "5"
+                          : "8"}
                       </p>
                     </div>
                     <div>
@@ -843,9 +985,16 @@ function CustomGamePage() {
                         {allowedPhases.reduce(
                           (sum, phase) =>
                             sum +
-                            ({ spelling: 10, drawing: 15, gallery: 5, gk: 20 }[
-                              phase
-                            ] || 0),
+                            ({
+                              spelling: 10,
+                              drawing: 15,
+                              gallery: 5,
+                              gk: 20,
+                              typequest: 15, // ✅ New
+                              wordwrestle: 20, // ✅ New
+                              rhyming: 12, // ✅ New
+                              syllable: 14, // ✅ New
+                            }[phase] || 0),
                           0
                         )}
                       </p>

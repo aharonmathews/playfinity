@@ -1,11 +1,8 @@
-# Move your imagegenerationservice.py content here with the exact same code
 from diffusers import StableDiffusionPipeline
 import torch
 import os
-import base64
-import io
 from datetime import datetime
-from PIL import Image
+from typing import List, Dict, Any
 
 class ImageGenerationService:
     def __init__(self):
@@ -26,7 +23,7 @@ class ImageGenerationService:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         
-        # Load pipeline (exactly like your working code)
+        # Load pipeline (exactly like your fast working code)
         self.pipe = StableDiffusionPipeline.from_pretrained(
             "runwayml/stable-diffusion-v1-5",
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
@@ -48,8 +45,8 @@ class ImageGenerationService:
         
         print("✅ Pipeline loaded successfully")
     
-    def generate_images_from_prompts(self, prompts, topic):
-        """Generate images using your exact working code"""
+    def generate_images_from_prompts(self, prompts: List[str], topic: str) -> Dict[str, Any]:
+        """🚀 OPTIMIZED: Generate images without base64 conversion bottleneck"""
         try:
             # Load pipeline if not already loaded
             self.load_pipeline()
@@ -69,18 +66,18 @@ class ImageGenerationService:
             
             print("Starting batch generation...")
             
-            # Generate all images in one batch (using your exact working code)
+            # 🚀 FAST GENERATION (using your exact working code)
             outputs = self.pipe(
                 prompt=enhanced_prompts,
                 height=512,
                 width=512,
-                num_inference_steps=25,  # Slightly faster
+                num_inference_steps=25,  # Slightly faster than 30
                 guidance_scale=7.5,
                 negative_prompt=negative_prompts,
                 generator=torch.Generator(self.device).manual_seed(42)  # For reproducibility
             )
             
-            # Save all images and convert to base64
+            # 🚀 OPTIMIZED: Save files only (NO base64 conversion)
             os.makedirs("generated_images", exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
@@ -89,29 +86,24 @@ class ImageGenerationService:
             image_data = []
             
             for i, image in enumerate(outputs.images):
-                # Save to file
+                # Save to file (FAST - no base64)
                 filename = f"generated_images/{timestamp}_{topic}_{i}.png"
                 image.save(filename)
                 saved_files.append(filename)
                 
-                # Convert to base64 for frontend
-                buffered = io.BytesIO()
-                image.save(buffered, format="PNG")
-                img_base64 = base64.b64encode(buffered.getvalue()).decode()
-                
+                # 🚀 OPTIMIZED: Return file path only (no base64)
                 image_data.append({
                     "index": i,
                     "prompt": prompts[i],  # Original prompt
                     "enhanced_prompt": enhanced_prompts[i],  # Enhanced prompt
                     "filename": filename,
-                    "image_base64": f"data:image/png;base64,{img_base64}",
-                    "url": filename  # Local file path
+                    "url": f"/api/images/{os.path.basename(filename)}"  # API endpoint URL
                 })
                 
                 print(f"✅ Image {i+1}/{len(prompts)}: {filename}")
             
             print(f"\n🎉 All {len(prompts)} images generated successfully!")
-            print(f"Total time per image: ~{(25/len(prompts)):.1f} seconds (instead of 25s each)")
+            print(f"⚡ FAST MODE: No base64 conversion bottleneck!")
             
             # Clean up GPU memory
             if torch.cuda.is_available():
@@ -121,7 +113,8 @@ class ImageGenerationService:
                 "success": True,
                 "images": image_data,
                 "total_generated": len(image_data),
-                "saved_files": saved_files
+                "saved_files": saved_files,
+                "performance": "optimized"  # Indicator that this is fast mode
             }
             
         except Exception as e:
@@ -129,6 +122,27 @@ class ImageGenerationService:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             return {"success": False, "error": str(e)}
+    
+    def get_image_as_base64(self, filename: str) -> str:
+        """🔧 OPTIONAL: Convert specific image to base64 only when needed"""
+        try:
+            import base64
+            import io
+            from PIL import Image
+            
+            if not os.path.exists(filename):
+                raise FileNotFoundError(f"Image file not found: {filename}")
+            
+            image = Image.open(filename)
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            img_base64 = base64.b64encode(buffered.getvalue()).decode()
+            
+            return f"data:image/png;base64,{img_base64}"
+            
+        except Exception as e:
+            print(f"❌ Error converting image to base64: {e}")
+            return ""
     
     def cleanup(self):
         """Clean up resources"""

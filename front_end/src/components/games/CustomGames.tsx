@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useUser } from "../../contexts/UserContext";
 
-// Define game access based on disabilities
+// Define game access based on disabilities - UPDATED with new games
 const GAME_ACCESS = {
   ADHD: {
-    allowedGames: ["imageReordering", "quiz"],
+    allowedGames: ["imageReordering", "quiz", "typequest", "wordwrestle"], // ✅ Added 2 new games
     restrictedMessage:
       "These games are specially designed for ADHD learners to help with focus and attention.",
     description:
       "Games focused on attention, organization, and logical thinking patterns.",
   },
   Dyslexia: {
-    allowedGames: ["spelling", "drawing", "imageReordering"],
+    allowedGames: [
+      "spelling",
+      "drawing",
+      "imageReordering",
+      "rhyming",
+      "syllable",
+    ], // ✅ Added 2 new games
     restrictedMessage:
       "These games are specially designed for dyslexic learners to help with reading and language skills.",
     description:
@@ -38,6 +44,10 @@ const GAME_ACCESS = {
       "drawing",
       "pattern",
       "audio",
+      "typequest", // ✅ Available for general users too
+      "wordwrestle", // ✅ Available for general users too
+      "rhyming", // ✅ Available for general users too
+      "syllable", // ✅ Available for general users too
     ],
     restrictedMessage: "All games are available for you!",
     description: "Complete access to all learning games and activities.",
@@ -50,7 +60,7 @@ const GAME_ACCESS = {
   },
 };
 
-// All possible games that can be generated
+// All possible games that can be generated - UPDATED with new games
 const ALL_AVAILABLE_GAMES = [
   {
     id: "imageReordering",
@@ -106,6 +116,48 @@ const ALL_AVAILABLE_GAMES = [
     estimatedTime: "5-7 min",
     skills: ["Listening", "Audio Processing", "Memory"],
   },
+  // ✅ NEW ADHD GAMES
+  {
+    id: "typequest",
+    title: "Type Quest",
+    description: "Fast typing adventure with focus challenges",
+    emoji: "⌨️",
+    difficulty: "Medium",
+    estimatedTime: "6-10 min",
+    skills: ["Focus", "Typing Speed", "Attention Control"],
+    specialFeature: "ADHD Optimized",
+  },
+  {
+    id: "wordwrestle",
+    title: "Word Wrestle",
+    description: "Wrestle with words in rapid-fire challenges",
+    emoji: "🤼",
+    difficulty: "Hard",
+    estimatedTime: "7-12 min",
+    skills: ["Quick Thinking", "Word Recognition", "Mental Agility"],
+    specialFeature: "ADHD Optimized",
+  },
+  // ✅ NEW DYSLEXIA GAMES
+  {
+    id: "rhyming",
+    title: "Rhyming Words",
+    description: "Find and match rhyming word patterns",
+    emoji: "🎵",
+    difficulty: "Medium",
+    estimatedTime: "5-9 min",
+    skills: ["Phonological Awareness", "Sound Patterns", "Language"],
+    specialFeature: "Dyslexia Friendly",
+  },
+  {
+    id: "syllable",
+    title: "Syllable Splitter",
+    description: "Break words into syllables and rebuild them",
+    emoji: "✂️",
+    difficulty: "Medium",
+    estimatedTime: "6-10 min",
+    skills: ["Phonemic Awareness", "Word Structure", "Reading"],
+    specialFeature: "Dyslexia Friendly",
+  },
 ];
 
 interface CustomGamesProps {
@@ -134,15 +186,16 @@ export function CustomGames({ topic, onClose }: CustomGamesProps) {
     setSelectedGame(gameId);
 
     try {
-      // Here you would typically call your API to generate the specific game
-      // based on the topic and game type
       console.log(`Starting ${gameId} game for topic: ${topic}`);
 
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Navigate to the specific game or show the game component
-      // This depends on how your game routing is set up
+      // Here you would navigate to specific game components
+      // For now, we'll just simulate the game start
+      alert(
+        `🎮 Starting ${gameId} game for "${topic}"!\n\nThis would navigate to the specific game component.`
+      );
     } catch (error) {
       console.error("Error starting game:", error);
     } finally {
@@ -164,9 +217,21 @@ export function CustomGames({ topic, onClose }: CustomGamesProps) {
     }
   };
 
+  // ✅ Get special feature color
+  const getSpecialFeatureColor = (feature: string) => {
+    switch (feature) {
+      case "ADHD Optimized":
+        return "bg-emerald-100 text-emerald-700 border-emerald-300";
+      case "Dyslexia Friendly":
+        return "bg-blue-100 text-blue-700 border-blue-300";
+      default:
+        return "bg-purple-100 text-purple-700 border-purple-300";
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
           <div className="flex justify-between items-center">
@@ -197,8 +262,18 @@ export function CustomGames({ topic, onClose }: CustomGamesProps) {
               </h3>
               <p className="text-blue-700 text-sm">
                 <strong>Support Type:</strong>{" "}
-                {user?.disability || "General Learning"} •
-                <strong> Available Games:</strong> {availableGames.length}
+                {user?.disability || "General Learning"} •{" "}
+                <strong>Available Games:</strong> {availableGames.length}
+                {user?.disability === "ADHD" && (
+                  <span className="ml-2 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">
+                    ⚡ Focus & Attention Games
+                  </span>
+                )}
+                {user?.disability === "Dyslexia" && (
+                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                    📚 Language & Reading Games
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -224,7 +299,11 @@ export function CustomGames({ topic, onClose }: CustomGamesProps) {
                 </h3>
                 <p className="text-gray-600 text-sm">
                   These games are specifically curated for your learning needs
-                  and the topic you drew.
+                  and the topic you drew.{" "}
+                  {user?.disability === "ADHD" &&
+                    "Focus-enhancing games included!"}
+                  {user?.disability === "Dyslexia" &&
+                    "Reading-support games included!"}
                 </p>
               </div>
 
@@ -232,8 +311,21 @@ export function CustomGames({ topic, onClose }: CustomGamesProps) {
                 {availableGames.map((game) => (
                   <div
                     key={game.id}
-                    className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 group"
+                    className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 group relative"
                   >
+                    {/* ✅ Special Feature Badge */}
+                    {game.specialFeature && (
+                      <div
+                        className={`absolute top-3 right-3 px-2 py-1 text-xs font-medium rounded-full border ${getSpecialFeatureColor(
+                          game.specialFeature
+                        )}`}
+                      >
+                        {game.specialFeature === "ADHD Optimized" && "⚡"}
+                        {game.specialFeature === "Dyslexia Friendly" && "📚"}
+                        {game.specialFeature?.split(" ")[0]}
+                      </div>
+                    )}
+
                     <div className="text-center mb-4">
                       <span className="text-4xl mb-2 block group-hover:animate-bounce">
                         {game.emoji}
@@ -290,7 +382,13 @@ export function CustomGames({ topic, onClose }: CustomGamesProps) {
                     <button
                       onClick={() => handleGameStart(game.id)}
                       disabled={loading && selectedGame === game.id}
-                      className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`w-full py-3 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        game.specialFeature === "ADHD Optimized"
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                          : game.specialFeature === "Dyslexia Friendly"
+                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                      }`}
                     >
                       {loading && selectedGame === game.id ? (
                         <span className="flex items-center justify-center gap-2">
@@ -314,6 +412,10 @@ export function CustomGames({ topic, onClose }: CustomGamesProps) {
             <span>
               Showing {availableGames.length} games optimized for your learning
               style
+              {user?.disability === "ADHD" &&
+                " • Including focus-enhancement games"}
+              {user?.disability === "Dyslexia" &&
+                " • Including reading-support games"}
             </span>
             <button
               onClick={onClose}

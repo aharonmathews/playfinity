@@ -12,6 +12,15 @@ interface AnalysisResult {
   tags: Tag[];
   description: string;
   analysis: any;
+  primary_label?: string;
+  all_related_topics?: string[];
+  flattened_topics?: string[];
+  domain_topics?: any;
+  auto_generated_topics?: boolean;
+  // Enhanced properties for better display
+  displayTopics?: string[];
+  originalDrawing?: string;
+  totalTopicCount?: number;
 }
 
 const GAME_ACCESS = {
@@ -59,7 +68,7 @@ export function DrawingCanvas({ theme }: { theme: any }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [generatingGames, setGeneratingGames] = useState(false);
-  const [selectedTag, setSelectedTag] = useState<string>("");
+  const [selectedTopic, setSelectedTopic] = useState<string>(""); // Changed from selectedTag
 
   const navigate = useNavigate();
   const { user } = useUser();
@@ -168,9 +177,10 @@ export function DrawingCanvas({ theme }: { theme: any }) {
     const rect = canvas.getBoundingClientRect();
     fillWhiteBackground(ctx, rect.width, rect.height);
     setResult(null);
-    setSelectedTag("");
+    setSelectedTopic(""); // Reset selected topic
   }
 
+  // 🆕 Enhanced submit handler that processes flattened topics
   async function handleSubmit() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -198,7 +208,42 @@ export function DrawingCanvas({ theme }: { theme: any }) {
         }
 
         const data: AnalysisResult = await res.json();
-        setResult(data);
+
+        if (data.success) {
+          // 🆕 Enhanced result processing
+          const enhancedResult = {
+            ...data,
+            // Use flattened topics as the main display topics
+            displayTopics: data.flattened_topics || [],
+            originalDrawing: data.primary_label || "Drawing",
+            totalTopicCount: (data.flattened_topics || []).length,
+          };
+
+          setResult(enhancedResult);
+
+          // Enhanced logging
+          console.log(`🎯 Original drawing detected: ${data.primary_label}`);
+          console.log(
+            `📚 Generated ${
+              data.flattened_topics?.length || 0
+            } educational topics from all detected elements`
+          );
+          console.log(
+            `🎨 Educational topics: ${
+              data.flattened_topics?.join(", ") || "None"
+            }`
+          );
+
+          if (data.tags && data.tags.length > 0) {
+            console.log(
+              `🏷️ Original Azure tags: ${data.tags
+                .map((t) => `${t.name}(${t.confidence}%)`)
+                .join(", ")}`
+            );
+          }
+        } else {
+          setResult(data);
+        }
       } catch (err) {
         setResult({
           success: false,
@@ -207,6 +252,8 @@ export function DrawingCanvas({ theme }: { theme: any }) {
             err instanceof Error ? err.message : "Unknown error"
           }. Make sure the backend is running on http://127.0.0.1:8000`,
           analysis: null,
+          displayTopics: [],
+          originalDrawing: "Error",
         });
       } finally {
         setLoading(false);
@@ -214,8 +261,9 @@ export function DrawingCanvas({ theme }: { theme: any }) {
     }, "image/png");
   }
 
-  const handleTagClick = async (tagName: string) => {
-    setSelectedTag(tagName);
+  // 🆕 Updated topic click handler (changed from handleTagClick to handleTopicClick)
+  const handleTopicClick = async (topicName: string) => {
+    setSelectedTopic(topicName);
     setGeneratingGames(true);
 
     try {
@@ -225,7 +273,7 @@ export function DrawingCanvas({ theme }: { theme: any }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            topic: tagName,
+            topic: topicName,
             age_group: "7-11",
             user_disability: user?.disability || "None",
             allowed_games: userGameAccess.allowedGames,
@@ -243,13 +291,14 @@ export function DrawingCanvas({ theme }: { theme: any }) {
         if (validation.games_exist) {
           navigate("/custom-games", {
             state: {
-              topic: tagName,
+              topic: topicName,
               gameData: validation.games,
               images: validation.games.gallery?.images || null,
               source: "firebase",
               userDisability: user?.disability || "None",
               allowedGames: userGameAccess.allowedGames,
               disabilityMessage: userGameAccess.restrictedMessage,
+              originalDrawing: result?.originalDrawing, // Pass original drawing context
             },
           });
         } else {
@@ -259,7 +308,7 @@ export function DrawingCanvas({ theme }: { theme: any }) {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                topic: tagName,
+                topic: topicName,
                 age_group: "7-11",
                 user_disability: user?.disability || "None",
                 allowed_games: userGameAccess.allowedGames,
@@ -276,13 +325,14 @@ export function DrawingCanvas({ theme }: { theme: any }) {
           if (gameResult.success) {
             navigate("/custom-games", {
               state: {
-                topic: tagName,
+                topic: topicName,
                 gameData: gameResult.games,
                 images: gameResult.images || null,
                 source: "generated",
                 userDisability: user?.disability || "None",
                 allowedGames: userGameAccess.allowedGames,
                 disabilityMessage: userGameAccess.restrictedMessage,
+                originalDrawing: result?.originalDrawing, // Pass original drawing context
               },
             });
           } else {
@@ -294,7 +344,7 @@ export function DrawingCanvas({ theme }: { theme: any }) {
       }
     } catch (error) {
       alert(
-        `Failed to load games for "${tagName}". Error: ${error.message}. Please make sure the backend is running.`
+        `Failed to load games for "${topicName}". Error: ${error.message}. Please make sure the backend is running.`
       );
     } finally {
       setGeneratingGames(false);
@@ -446,7 +496,6 @@ export function DrawingCanvas({ theme }: { theme: any }) {
           className={`flex items-center justify-between p-4 bg-${theme.primary}-50 rounded-2xl ${theme.border} border`}
         >
           <div className="flex items-center gap-3">
-            <span className="text-center gap-3"></span>
             <span className="text-xl">🔌</span>
             <span className={`text-sm font-semibold ${theme.textPrimary}`}>
               Backend Status:
@@ -488,13 +537,13 @@ export function DrawingCanvas({ theme }: { theme: any }) {
               </div>
               <div>
                 <h4 className={`text-lg font-bold ${theme.textPrimary} mb-1`}>
-                  {selectedTag
-                    ? `Creating "${selectedTag}" Games`
+                  {selectedTopic
+                    ? `Creating "${selectedTopic}" Games`
                     : "Processing Your Drawing"}
                 </h4>
                 <p className={`${theme.textSecondary} text-sm`}>
-                  Generating personalized learning games optimized for{" "}
-                  {user?.disability || "your"} learning profile...
+                  Generating personalized learning games from your "
+                  {result?.originalDrawing}" drawing...
                 </p>
                 <div className={`flex items-center gap-2 mt-2`}>
                   <div
@@ -515,7 +564,7 @@ export function DrawingCanvas({ theme }: { theme: any }) {
         </div>
       )}
 
-      {/* ✅ Enhanced Results Display */}
+      {/* 🆕 Enhanced Results Display with Educational Topics */}
       {result && !generatingGames && (
         <div className="mx-6 mb-6">
           <div
@@ -531,11 +580,12 @@ export function DrawingCanvas({ theme }: { theme: any }) {
                     <span className="text-2xl">✨</span>
                     <div>
                       <h4 className="text-lg font-bold text-green-800">
-                        Analysis Complete!
+                        Your "{result.originalDrawing}" Drawing Analysis
+                        Complete!
                       </h4>
                       <p className="text-sm text-green-700">
-                        We've identified learning opportunities from your
-                        drawing
+                        We've generated {result.totalTopicCount} educational
+                        topics from all elements in your drawing
                       </p>
                     </div>
                   </div>
@@ -559,33 +609,33 @@ export function DrawingCanvas({ theme }: { theme: any }) {
                     </div>
                   )}
 
-                  {/* Learning Topics */}
-                  {result.tags && result.tags.length > 0 && (
+                  {/* 🆕 Educational Topics from All Detected Elements */}
+                  {result.displayTopics && result.displayTopics.length > 0 && (
                     <div>
                       <h5
                         className={`font-semibold ${theme.textPrimary} mb-4 flex items-center gap-2`}
                       >
-                        <span className="text-lg">🎯</span>
-                        Learning Topics Available:
+                        <span className="text-lg">📚</span>
+                        Educational Learning Topics ({result.totalTopicCount}):
                         <span
                           className={`text-sm ${theme.textMuted} bg-${theme.primary}-100 px-3 py-1 rounded-full`}
                         >
-                          Optimized for {user?.disability || "general"} learning
+                          Generated from your "{result.originalDrawing}" drawing
                         </span>
                       </h5>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {result.tags.map((tag, index) => (
+                        {result.displayTopics.map((topic, index) => (
                           <button
                             key={index}
-                            onClick={() => handleTagClick(tag.name)}
+                            onClick={() => handleTopicClick(topic)}
                             disabled={generatingGames}
                             className={`group relative overflow-hidden rounded-2xl p-6 text-left ${
                               theme.animations
                             } ${
                               theme.shadow
                             } hover:shadow-lg transform hover:scale-105 ${
-                              selectedTag === tag.name
+                              selectedTopic === topic
                                 ? `bg-gradient-to-r from-${theme.primary}-600 to-${theme.secondary}-600 text-white`
                                 : `${theme.cardBg} hover:bg-gradient-to-r hover:from-${theme.primary}-50 hover:to-${theme.secondary}-50`
                             } ${
@@ -597,35 +647,36 @@ export function DrawingCanvas({ theme }: { theme: any }) {
                             <div className="relative z-10">
                               <div className="flex items-center justify-between mb-3">
                                 <span className="text-2xl group-hover:animate-bounce">
-                                  🎮
+                                  🎯
                                 </span>
                                 <span
                                   className={`text-xs px-2 py-1 rounded-full ${
-                                    selectedTag === tag.name
+                                    selectedTopic === topic
                                       ? "bg-white/20"
                                       : `bg-${theme.primary}-200 ${theme.textPrimary}`
                                   }`}
                                 >
-                                  {tag.confidence}% match
+                                  Educational Topic
                                 </span>
                               </div>
-                              <h6 className="text-lg font-bold mb-2 capitalize">
-                                {tag.name}
+                              <h6 className="text-lg font-bold mb-2">
+                                {topic}
                               </h6>
                               <p
                                 className={`text-sm ${
-                                  selectedTag === tag.name
+                                  selectedTopic === topic
                                     ? "text-white/80"
                                     : theme.textSecondary
                                 } mb-3`}
                               >
-                                Click to generate educational games about{" "}
-                                {tag.name}
+                                Learn about {topic.toLowerCase()} through
+                                interactive games
                               </p>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-medium opacity-75">
                                   {userGameAccess.allowedGames.length} game
-                                  types available
+                                  types • {user?.disability || "General"}{" "}
+                                  optimized
                                 </span>
                                 <span className="text-lg ml-auto group-hover:translate-x-1 transition-transform">
                                   →
@@ -645,15 +696,37 @@ export function DrawingCanvas({ theme }: { theme: any }) {
                         className={`mt-4 p-4 bg-${theme.primary}-50 rounded-xl ${theme.border} border`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">💡</span>
+                          <span className="text-lg">🎨</span>
                           <p className={`text-sm ${theme.textSecondary}`}>
-                            <strong>Personalized Learning:</strong> Games will
-                            be customized for your{" "}
-                            {user?.disability || "general"} learning profile
-                            with appropriate difficulty levels and teaching
-                            methods.
+                            <strong>Smart Topic Generation:</strong> We analyzed
+                            your "{result.originalDrawing}" drawing and
+                            generated {result.totalTopicCount} educational
+                            topics from all detected elements, covering multiple
+                            domains of learning relevant to your artwork.
                           </p>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Original detected elements for reference */}
+                  {result.tags && result.tags.length > 0 && (
+                    <div className="border-t pt-4">
+                      <h6
+                        className={`text-sm font-medium ${theme.textMuted} mb-3 flex items-center gap-2`}
+                      >
+                        <span className="text-base">🏷️</span>
+                        Elements detected in your drawing:
+                      </h6>
+                      <div className="flex flex-wrap gap-2">
+                        {result.tags.slice(0, 8).map((tag, index) => (
+                          <span
+                            key={index}
+                            className={`px-3 py-1 bg-${theme.primary}-100 text-${theme.primary}-700 rounded-full text-xs font-medium`}
+                          >
+                            {tag.name} ({tag.confidence}%)
+                          </span>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -702,19 +775,24 @@ export function DrawingCanvas({ theme }: { theme: any }) {
               </h4>
               <p className={`${theme.textSecondary} mb-4 leading-relaxed`}>
                 Draw anything you'd like to learn about! Our AI will analyze
-                your drawing and create personalized learning games tailored for
-                your {user?.disability || "unique"} learning style.
+                your drawing and create comprehensive educational topics from
+                all detected elements, generating personalized learning games
+                for your {user?.disability || "unique"} learning style.
               </p>
               <div
-                className={`grid grid-cols-1 md:grid-cols-3 gap-4 text-sm ${theme.textSecondary}`}
+                className={`grid grid-cols-1 md:grid-cols-4 gap-4 text-sm ${theme.textSecondary}`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-lg">✏️</span>
-                  <span>Draw your idea</span>
+                  <span>Draw anything</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">🔍</span>
-                  <span>AI analyzes it</span>
+                  <span>AI detects elements</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📚</span>
+                  <span>Generate topics</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">🎮</span>

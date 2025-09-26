@@ -11,6 +11,7 @@ import { auth } from "../firebase";
 import TypeQuestGame from "../components/games/TypeQuestGame";
 import RhymeRoundupGame from "../components/games/RhymeRoundupGame";
 import SyllableSplitterGame from "../components/games/SyllableSplitterGame";
+import WordWrestleGame from "../components/games/WordWrestleGame"; // 🆕 Import Word Wrestle
 
 // ✅ Enhanced disability-specific themes with better accessibility
 const DISABILITY_THEMES = {
@@ -149,6 +150,7 @@ function HomePage() {
   const [showTypeQuest, setShowTypeQuest] = useState(false);
   const [showRhymeRoundup, setShowRhymeRoundup] = useState(false);
   const [showSyllableSplitter, setShowSyllableSplitter] = useState(false);
+  const [showWordWrestle, setShowWordWrestle] = useState(false); // 🆕 Word Wrestle state
   const [signingOut, setSigningOut] = useState(false);
   const navigate = useNavigate();
 
@@ -285,7 +287,13 @@ function HomePage() {
       : Math.round(((coveredCount - runningCount) / coveredCount) * 100);
 
   function navigateToGame(topic: Topic) {
-    navigate(`/game/${topic.id}`);
+    // Navigate to the game sequence page
+    navigate(`/game/${topic.id}`, {
+      state: {
+        topic,
+        userDisability: user?.disability || "None",
+      },
+    });
   }
 
   const getAvailableGames = () => {
@@ -300,6 +308,19 @@ function HomePage() {
         tags: ["Math", "RPG"],
         suitable: ["ADHD", "None", "Other", "Autism"],
         onClick: () => setShowTypeQuest(true),
+      },
+      // 🆕 Add Word Wrestle for ADHD users
+      {
+        id: "wordwrestle",
+        name: "Word Wrestle",
+        description:
+          "ADHD-focused vocabulary battle! Test synonyms and antonyms in a fun tug-of-war format.",
+        icon: "💪",
+        gradient: "from-purple-600 to-indigo-800",
+        hoverGradient: "hover:from-purple-700 hover:to-indigo-900",
+        tags: ["Vocabulary", "ADHD", "Focus"],
+        suitable: ["ADHD"], // 🎯 Only for ADHD users
+        onClick: () => setShowWordWrestle(true),
       },
       {
         id: "rhyme",
@@ -530,7 +551,7 @@ function HomePage() {
                       <p className="text-white/90 mb-6 leading-relaxed">
                         {game.description}
                       </p>
-                      <div className="flex justify-center gap-3 text-sm">
+                      <div className="flex justify-center gap-3 text-sm flex-wrap">
                         {game.tags.map((tag) => (
                           <span
                             key={tag}
@@ -652,6 +673,25 @@ function HomePage() {
             </div>
             <div className="px-6 pb-6">
               <SyllableSplitterGame />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 Word Wrestle Modal for ADHD Users */}
+      {showWordWrestle && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] overflow-auto shadow-2xl border border-gray-200">
+            <div className="flex justify-end p-6">
+              <button
+                onClick={() => setShowWordWrestle(false)}
+                className={`text-gray-500 hover:text-gray-700 text-3xl font-bold w-12 h-12 rounded-2xl hover:bg-gray-100 ${theme.animations} ${theme.focusRing}`}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-6 pb-6">
+              <WordWrestleGame />
             </div>
           </div>
         </div>
